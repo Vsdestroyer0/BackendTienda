@@ -7,7 +7,8 @@ import mongoose from "mongoose";
 import dotenv from "dotenv";
 // Importar rutas del proyecto
 import authRoutes from "./Backend/routes/users/authRoutes.js";
-
+import orderRoutes from "./Backend/routes/orders/orderRoutes.js";
+import inventoryRoutes from "./Backend/routes/inventory/inventoryRoutes.js";
 // Validar conexión a la base de datos
 mongoose.connection.once("open", () => {
   console.log("[Mongo] conectado a", mongoose.connection.host, mongoose.connection.name);
@@ -31,9 +32,9 @@ async function startServer(){
     app.use(cookieParser());
 
     const allowList = [
-        "http://localhost:3000",
+        "http://localhost:5173",
         // dominio de la app abajo
-        //"backendtienda-production-7389.up.railway.app"
+        
     ];
 
     app.use(cors({
@@ -63,7 +64,9 @@ async function startServer(){
 
     // Abajo se agregan las rutas de la app que estarán en la capeta routes
     app.use("/api/auth", authRoutes);
-
+    app.use("/api/orders", orderRoutes);
+    app.use("/api/inventory", inventoryRoutes);
+    
     // Healt check para Railway o render
     // Healt check es un endpoint que retorna un json con un objeto que tiene la propiedad ok con el valor true
     // y la propiedad ok y true significan que la app esta funcionando correctamente

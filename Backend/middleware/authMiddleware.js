@@ -1,6 +1,6 @@
 // Importaciones de paquetes
 import jwt from "jsonwebtoken";
-import Usuario from "../models/usuario.js"; 
+import Usuario from "../models/users/usuario.js"; 
 
 // Configuración de la clave secreta para el token
 const secretKey = process.env.JWT_SECRET;
@@ -29,7 +29,7 @@ export const VerifyToken = async (req, res, next) => {
         const decoded = jwt.verify(token, secretKey);
         
         // Consulta a BD para obtener email/role actualizados
-        const user = await Usuario.findById(decoded.id).select("_id email role");
+        const user = await Usuario.findById(decoded.id).select("_id email role nombre");
         if (!user) {
         return res.status(401).json({ success: false, message: "Usuario no encontrado" });
         }
@@ -37,7 +37,8 @@ export const VerifyToken = async (req, res, next) => {
         req.user = {
         id: user._id.toString(),
         email: user.email,
-        role: user.role
+        role: user.role,
+        nombre: user.nombre
         };
         req.userId = req.user.id;
 
@@ -48,3 +49,12 @@ export const VerifyToken = async (req, res, next) => {
   return res.status(401).json({ success: false, message: "Token inválido o expirado" });
     }
 };
+
+export const verifyRole = (...role) => (req, res, next) => {
+    if (!req.user || !role.includes(req.user.role)){
+        // Se usa 403 ya que no posee los permisos 
+        return res.status(403).json({success: false, message: "No tienes permisos"})
+    }
+    // Si el usuario posee los permisos se ejecuta la siguiente funcion
+    return next();
+}

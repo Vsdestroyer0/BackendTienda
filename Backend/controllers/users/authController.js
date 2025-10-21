@@ -3,7 +3,7 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 
 // Importaciones de modelos
-import Usuario from "../models/usuario.js";
+import Usuario from "../../models/users/usuario.js";
 const secretKey = process.env.JWT_SECRET;
 
 // Configuración de bcrypt
@@ -34,7 +34,7 @@ export const registrar = async (req, res) => {
         const hash = await bcrypt.hash(password, saltRounds);
         const newUser = new Usuario({ email, password: hash, nombre, apellido, role: "user" });
         await newUser.save();
-        return res.status(201).json({ success: true, message: "Usuario registrado" });
+        return res.status(201).json({ message: "Usuario creado con éxito.", user_id: newUser._id.toString() });
 
     } catch (e) {
         console.error(e);
@@ -83,7 +83,7 @@ export const loginUser = async (req, res) => {
     });
 
     // Ya jaló el login :D
-    res.json({ success: true, email: user.email, role: user.role });
+    res.json({ token });
 };
 
 // Obtener sesion
@@ -91,7 +91,9 @@ export const getSession = (req, res) => {
     if (!req.user){
         return res.status(401).json({ success: false, message: "No hay sesion" });
     }
-    res.json({ user: req.user });
+    const { id, email, role, nombre } = req.user;
+    // historial_compras no está modelado aún; se devuelve arreglo vacío por ahora
+    res.json({ id, email, role, nombre, historial_compras: [] });
 };
 
 // Cerrar sesión: limpiar cookie de autenticación
@@ -104,7 +106,7 @@ export const logoutUser = (req, res) => {
             sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
             path: "/",
         });
-        return res.json({ success: true, message: "Sesión cerrada" });
+        return res.json({ message: "Sesión cerrada correctamente." });
     } catch (e) {
         return res.status(500).json({ success: false, message: "No se pudo cerrar la sesión" });
     }
