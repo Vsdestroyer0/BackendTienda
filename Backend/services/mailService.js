@@ -1,17 +1,17 @@
-// Importaciones de paquetes
+// Importaciones
 import nodemailer from "nodemailer";
 
-// Funcion para enviar correo de verificacion
 export async function sendVerificationEmail(to, verifyUrl) {
+  const isSecure = process.env.SMTP_PORT === "465";
   const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST,
     port: parseInt(process.env.SMTP_PORT || "587", 10),
-    secure: false, // true si usas 465
+    secure: isSecure,
     auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
   });
 
   const info = await transporter.sendMail({
-    from: `"Tienda" <${process.env.SMTP_USER}>`,
+    from: `"Tienda" <${process.env.FROM_EMAIL}>`,
     to,
     subject: "Verifica tu cuenta",
     html: `<p>Gracias por registrarte.</p>

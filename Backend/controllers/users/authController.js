@@ -59,7 +59,7 @@ export const registrar = async (req, res) => {
         await newUser.save();
 
         // Enviar email de verificación
-        const base = process.env.APP_BASE_URL || process.env.APP_URL_LOCAL || "http://localhost:5173";
+        const base = process.env.APP_URL_LOCAL || process.env.APP_URL_PRODUCTION || "http://localhost:5173";
         const verifyUrl = `${base}/verify?token=${rawToken}&email=${encodeURIComponent(email)}`;
         try {
           await sendVerificationEmail(email, verifyUrl);
@@ -211,7 +211,7 @@ export const resendVerification = async (req, res) => {
     };
     await user.save();
 
-    const base = process.env.APP_BASE_URL || process.env.APP_URL_LOCAL || "http://localhost:5173";
+    const base = process.env.APP_URL_LOCAL || process.env.APP_URL_PRODUCTION || "http://localhost:5173";
     const verifyUrl = `${base}/verify?token=${rawToken}&email=${encodeURIComponent(email)}`;
     try {
       await sendVerificationEmail(email, verifyUrl);
