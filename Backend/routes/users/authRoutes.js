@@ -10,15 +10,20 @@ import { VerifyToken } from "../../middleware/authMiddleware.js";
 const router = Router();
 
 // Registro (siempre crea usuarios con role "user")
-router.post("/register", registrar);
+// body: { email, password, nombre, apellido }
+router.post("/api/auth/register", registrar);
 
 // Login (devuelve cookie httpOnly "token")
-router.post("/login", loginUser);
+// body: { email, password }
+router.post("/api/auth/login", loginUser);
 
 // Obtener sesión actual (requiere token válido)
-router.get("/session", VerifyToken, getSession);
+// body: {}
+router.get("/api/auth/me", VerifyToken, getSession);
 
 // Logout (limpia cookie "token")
-router.post("/logout", logoutUser);
+// body: {}
+router.post("/api/auth/logout", logoutUser);
 
+// exportacion del router
 export default router;

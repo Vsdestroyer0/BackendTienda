@@ -8,7 +8,6 @@ import dotenv from "dotenv";
 // Importar rutas del proyecto
 import authRoutes from "./Backend/routes/users/authRoutes.js";
 
-
 // Validar conexión a la base de datos
 mongoose.connection.once("open", () => {
   console.log("[Mongo] conectado a", mongoose.connection.host, mongoose.connection.name);
