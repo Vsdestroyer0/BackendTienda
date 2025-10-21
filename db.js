@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-const uri = "mongodb://localhost:27017/Tienda";
+const uri = process.env.MONGODB_URI;
 
 export default async function connectDB() {
     try {

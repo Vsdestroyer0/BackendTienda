@@ -4,6 +4,7 @@ import cors from "cors";
 import connectDB from "./db.js";
 import cookieParser from "cookie-parser";
 import mongoose from "mongoose";
+import dotenv from "dotenv";
 // Empezar servidor e ingresar routes a futuro
 
 
@@ -11,6 +12,9 @@ import mongoose from "mongoose";
 mongoose.connection.once("open", () => {
   console.log("[Mongo] conectado a", mongoose.connection.host, mongoose.connection.name);
 });
+
+// Configurar variables de entorno
+dotenv.config();
 
 // Iniciar el servidor
 const app = express();
