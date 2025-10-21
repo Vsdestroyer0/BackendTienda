@@ -34,7 +34,7 @@ async function startServer(){
     const allowList = [
         "http://localhost:3000",
         // dominio de la app abajo
-        //"https://tienda-frontend.app"
+        //"backendtienda-production-7389.up.railway.app"
     ];
 
     app.use(cors({
