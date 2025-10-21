@@ -45,6 +45,10 @@ async function startServer(){
                 // Si no hay origin, se permite la peticion y esta es la forma de indicarle a cors que se permite la peticion
                 return callback (null, true)
             }
+            // Si la url de la app que esta haciendo la peticion esta en la lista de permitidos, se permite la peticion
+            if (allowList.includes(origin)){
+                return callback(null, true);
+            }
             // Si la url de la app que esta haciendo la peticion no esta en la lista de permitidos, se deniega la peticion
             return callback(new Error("No permitido por CORS"))
         },

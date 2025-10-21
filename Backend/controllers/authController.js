@@ -6,26 +6,40 @@ import bcrypt from "bcrypt";
 import Usuario from "../models/usuario.js";
 const secretKey = process.env.JWT_SECRET;
 
+// Configuración de bcrypt
+const saltRounds = parseInt(process.env.BCRYPT_SALT_ROUNDS || "10", 10);
+
 // Función para registrar un usuario
 // req: solicitud
 // res: respuesta
 export const registrar = async (req, res) => {
-    const { email, password } = req.body;
-    // Validar que el email y la contraseña no estén vacíos
-    if (!email || !password) {
-        return res.json({ success: false, message: "Faltan datos" });
-    }
+    try {
+        const { email, password, nombre, apellido } = req.body;
+        // Validar que el email y la contraseña no estén vacíos
+        if (!email || !password || !nombre || !apellido) {
+            return res.status(400).json({ success: false, message: "Faltan datos" });
+        }
 
-    const exists = await Usuario.findOne({ email });
-    if (exists) {
-        return res.json({ success: false, message: "El usuario ya existe" });
-    }
+        // Bloquear role en el body para que no se pueda asignar roles elevados
+        if (req.body.role && req.body.role !== "user") {
+        return res.status(400).json({ success: false, message: "No puedes asignar roles elevados" });
+        }
 
-    // Hashear la contraseña, 10 es el numero de veces que se va a hashear
-    const hash = await bcrypt.hash(password, 10);
-    const newUser = new Usuario({ email, password: hash });
-    await newUser.save();
-    res.json({ success: true, message: "Usuario registrado" });
+        const exists = await Usuario.findOne({ email });
+        if (exists) {
+        return res.status(409).json({ success: false, message: "El usuario ya existe" });
+        }
+
+        // Hashear la contraseña, 10 es el numero de veces que se va a hashear
+        const hash = await bcrypt.hash(password, saltRounds);
+        const newUser = new Usuario({ email, password: hash, nombre, apellido, role: "user" });
+        await newUser.save();
+        return res.status(201).json({ success: true, message: "Usuario registrado" });
+
+    } catch (e) {
+        console.error(e);
+        return res.status(500).json({ success: false, message: "Error registrando usuario" });
+    }
 };
 
 // Función para iniciar sesión
@@ -36,17 +50,17 @@ export const loginUser = async (req, res) => {
 
     // Validar que el email y la contraseña no estén vacíos
     if (!email || !password) {
-        return res.json({ success: false, message: "Faltan datos" });
+        return res.status(400).json({ success: false, message: "Faltan datos" });
     }
 
     const user = await Usuario.findOne({ email });
     if (!user) {
-        return res.json({ success: false, message: "Usuario no encontrado" });
+        return res.status(401).json({ success: false, message: "Credenciales inválidas" });
     }
 
     const validPassword = await bcrypt.compare(password, user.password);
     if (!validPassword) {
-        return res.json({ success: false, message: "Contraseña incorrecta" });
+        return res.status(401).json({ success: false, message: "Credenciales inválidas" });
     }
 
     // Generar token JWT
@@ -62,7 +76,8 @@ export const loginUser = async (req, res) => {
         // secure es para que el token solo se envie por https
         secure: process.env.NODE_ENV === "production",
         // sameSite es para que el token solo se envie en la misma pagina
-        sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+        path: "/",
         // maxAge es la fecha de expiración del token y aqui son 12 horas
         maxAge: 12 * 60 * 60 * 1000
     });
@@ -74,7 +89,7 @@ export const loginUser = async (req, res) => {
 // Obtener sesion
 export const getSession = (req, res) => {
     if (!req.user){
-        return res.json({ success: false, message: "No hay sesion" });
+        return res.status(401).json({ success: false, message: "No hay sesion" });
     }
     res.json({ user: req.user });
 };
