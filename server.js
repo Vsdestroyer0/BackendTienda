@@ -5,7 +5,8 @@ import connectDB from "./db.js";
 import cookieParser from "cookie-parser";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
-// Empezar servidor e ingresar routes a futuro
+// Importar rutas del proyecto
+import authRoutes from "./Backend/routes/users/authRoutes.js";
 
 
 // Validar conexión a la base de datos
@@ -62,8 +63,7 @@ async function startServer(){
     }));
 
     // Abajo se agregan las rutas de la app que estarán en la capeta routes
-    //Se agregará algo como: 
-        //app.use("/api", metodoRoutes);
+    app.use("/api/auth", authRoutes);
 
     // Healt check para Railway o render
     // Healt check es un endpoint que retorna un json con un objeto que tiene la propiedad ok con el valor true
