@@ -1,6 +1,10 @@
 // Importaciones de paquetes
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
+import { randomBytes, createHash } from "crypto";
+
+// Servicios
+import { sendVerificationEmail } from "../../services/mailService.js";
 
 // Importaciones de modelos
 import Usuario from "../../models/users/usuario.js";
@@ -30,11 +34,41 @@ export const registrar = async (req, res) => {
         return res.status(409).json({ success: false, message: "El usuario ya existe" });
         }
 
-        // Hashear la contraseña, 10 es el numero de veces que se va a hashear
+        // Hashear la contraseña
         const hash = await bcrypt.hash(password, saltRounds);
-        const newUser = new Usuario({ email, password: hash, nombre, apellido, role: "user" });
+
+        // Crear usuario base (no verificado)
+        const newUser = new Usuario({
+          email,
+          password: hash,
+          nombre,
+          apellido,
+          role: "user",
+          emailVerified: false
+        });
+
+        // Generar token crudo y hash para verificación
+        const rawToken = randomBytes(32).toString("hex");
+        const tokenHashed = createHash("sha256").update(rawToken).digest("hex");
+        const expiresInMs = 15 * 60 * 1000; // 15 minutos
+        newUser.verificationToken = {
+          tokenHashed,
+          tokenExpiry: new Date(Date.now() + expiresInMs)
+        };
+
         await newUser.save();
-        return res.status(201).json({ message: "Usuario creado con éxito.", user_id: newUser._id.toString() });
+
+        // Enviar email de verificación
+        const base = process.env.APP_BASE_URL || process.env.APP_URL_LOCAL || "http://localhost:5173";
+        const verifyUrl = `${base}/verify?token=${rawToken}&email=${encodeURIComponent(email)}`;
+        try {
+          await sendVerificationEmail(email, verifyUrl);
+        } catch (mailErr) {
+          // No bloquear registro por error de correo, pero informar
+          console.error("No se pudo enviar email de verificación:", mailErr);
+        }
+
+        return res.status(201).json({ message: "Usuario creado con éxito. Revisa tu correo para verificar tu cuenta.", user_id: newUser._id.toString() });
 
     } catch (e) {
         console.error(e);
@@ -61,6 +95,10 @@ export const loginUser = async (req, res) => {
     const validPassword = await bcrypt.compare(password, user.password);
     if (!validPassword) {
         return res.status(401).json({ success: false, message: "Credenciales inválidas" });
+    }
+
+    if (!user.emailVerified) {
+        return res.status(403).json({ success: false, message: "Cuenta no verificada. Revisa tu correo o solicita reenvío." });
     }
 
     // Generar token JWT
@@ -110,4 +148,80 @@ export const logoutUser = (req, res) => {
     } catch (e) {
         return res.status(500).json({ success: false, message: "No se pudo cerrar la sesión" });
     }
+};
+
+// Verificar email (double opt-in)
+export const verifyEmail = async (req, res) => {
+  try {
+    const { email, token } = req.body; // o desde query si prefieres GET
+    if (!email || !token) {
+      return res.status(400).json({ success: false, message: "Datos incompletos" });
+    }
+    const user = await Usuario.findOne({ email });
+    if (!user) return res.status(404).json({ success: false, message: "Usuario no encontrado" });
+    if (user.emailVerified) return res.status(200).json({ message: "Correo ya verificado" });
+
+    const now = new Date();
+    if (!user.verificationToken || !user.verificationToken.tokenHashed || !user.verificationToken.tokenExpiry) {
+      return res.status(400).json({ success: false, message: "Token inválido" });
+    }
+    if (user.verificationToken.tokenExpiry < now) {
+      return res.status(400).json({ success: false, message: "Token expirado" });
+    }
+
+    const providedHash = createHash("sha256").update(token).digest("hex");
+    if (providedHash !== user.verificationToken.tokenHashed) {
+      return res.status(400).json({ success: false, message: "Token inválido" });
+    }
+
+    user.emailVerified = true;
+    user.verificationToken = undefined;
+    await user.save();
+
+    return res.json({ message: "Correo verificado correctamente" });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ success: false, message: "No se pudo verificar el correo" });
+  }
+};
+
+// Reenviar verificación
+export const resendVerification = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ success: false, message: "Email requerido" });
+
+    const user = await Usuario.findOne({ email });
+    if (!user) return res.status(404).json({ success: false, message: "Usuario no encontrado" });
+    if (user.emailVerified) return res.status(200).json({ message: "Correo ya verificado" });
+
+    // Rate limit básico: si faltan >2 minutos para expirar, no reemitir
+    const now = Date.now();
+    const remaining = user.verificationToken?.tokenExpiry ? user.verificationToken.tokenExpiry.getTime() - now : 0;
+    if (remaining > 2 * 60 * 1000) {
+      return res.status(429).json({ success: false, message: "Espera antes de solicitar otro correo" });
+    }
+
+    const rawToken = randomBytes(32).toString("hex");
+    const tokenHashed = createHash("sha256").update(rawToken).digest("hex");
+    const expiresInMs = 15 * 60 * 1000;
+    user.verificationToken = {
+      tokenHashed,
+      tokenExpiry: new Date(now + expiresInMs)
+    };
+    await user.save();
+
+    const base = process.env.APP_BASE_URL || process.env.APP_URL_LOCAL || "http://localhost:5173";
+    const verifyUrl = `${base}/verify?token=${rawToken}&email=${encodeURIComponent(email)}`;
+    try {
+      await sendVerificationEmail(email, verifyUrl);
+    } catch (mailErr) {
+      console.error("No se pudo enviar email de verificación:", mailErr);
+    }
+
+    return res.json({ message: "Correo de verificación reenviado" });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ success: false, message: "No se pudo reenviar verificación" });
+  }
 };

@@ -2,7 +2,7 @@
 import { Router } from "express";
 
 // Importaciones de paquetes dentro del proyecto
-import { registrar, loginUser, getSession, logoutUser } from "../../controllers/users/authController.js";
+import { registrar, loginUser, getSession, logoutUser, verifyEmail, resendVerification } from "../../controllers/users/authController.js";
 import { VerifyToken } from "../../middleware/authMiddleware.js";
 
 // Creación del router
@@ -24,6 +24,14 @@ router.get("/me", VerifyToken, getSession);
 // Logout (limpia cookie "token")
 // body: {}
 router.delete("/logout", logoutUser);
+
+// Verificación de correo (double opt-in)
+// body: { email, token }
+router.post("/verify", verifyEmail);
+
+// Reenviar verificación
+// body: { email }
+router.post("/resend-verification", resendVerification);
 
 // exportacion del router
 export default router;
