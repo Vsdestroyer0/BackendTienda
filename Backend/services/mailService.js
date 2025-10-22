@@ -8,6 +8,7 @@ export async function sendVerificationEmail(to, verifyUrl) {
     port: parseInt(process.env.SMTP_PORT || "587", 10),
     secure: isSecure,
     auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
+    
   });
 
   const info = await transporter.sendMail({
@@ -19,6 +20,9 @@ export async function sendVerificationEmail(to, verifyUrl) {
            <p><a href="${verifyUrl}">${verifyUrl}</a></p>
            <p>Si tú no solicitaste esto, ignora este correo.</p>`
   });
+
+  const ok = await transporter.verify();
+    console.log("[SMTP verify]", ok);
 
   return info.messageId;
 }
