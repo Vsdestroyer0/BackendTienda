@@ -9,8 +9,8 @@ import { VerifyToken } from "../../middleware/authMiddleware.js";
 // router es un objeto que contiene todas las rutas de la app
 const router = Router();
 
-// Role guard simple: permite Cliente (user) o Cajero (cashier)
-const allowRoles = new Set(["user", "cashier"]);
+// Role guard simple: permite Cliente (user) o Cajero (cajero)
+const allowRoles = new Set(["user", "cajero"]);
 const roleGuard = (req, res, next) => {
   const role = req.user?.role;
   if (!role || !allowRoles.has(role)) {

@@ -11,7 +11,7 @@ import Usuario from "../../models/users/usuario.js";
 const secretKey = process.env.JWT_SECRET;
 
 // Configuración de bcrypt
-const saltRounds = parseInt(process.env.BCRYPT_SALT_ROUNDS || "10", 10);
+const saltRounds = parseInt(process.env.BCRYPT_SALT_ROUNDS);
 
 // Función para registrar un usuario
 // req: solicitud

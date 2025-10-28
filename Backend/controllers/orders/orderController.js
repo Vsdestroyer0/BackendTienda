@@ -72,7 +72,12 @@ export const checkoutCompra = async (req, res) => {
           total,
           status: "pagado",
           createdAt: now,
+          created_by_role: req.user?.role || "user",
         };
+        if (req.user?.role === "cajero"){
+          orderDoc.cajero_id = req.userId;
+          orderDoc.cajero_nombre = req.user?.nombre;
+        }
         const orderRes = await ordersCol.insertOne(orderDoc, { session });
         orderId = orderRes.insertedId.toString();
 
