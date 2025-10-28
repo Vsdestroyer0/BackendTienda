@@ -7,7 +7,7 @@ import mongoose from "mongoose";
 import dotenv from "dotenv";
 // Importar rutas del proyecto
 import authRoutes from "./Backend/routes/users/authRoutes.js";
-//import orderRoutes from "./Backend/routes/orders/orderRoutes.js";
+import orderRoutes from "./Backend/routes/orders/orderRoutes.js";
 //import inventoryRoutes from "./Backend/routes/inventory/inventoryRoutes.js";
 // Validar conexión a la base de datos
 mongoose.connection.once("open", () => {
@@ -63,7 +63,7 @@ async function startServer(){
 
     // Abajo se agregan las rutas de la app que estarán en la capeta routes
     app.use("/api/auth", authRoutes);
-    //app.use("/api/orders", orderRoutes);
+    app.use("/api/orders", orderRoutes);
     //app.use("/api/inventory", inventoryRoutes);
     
     // Healt check para Railway o render

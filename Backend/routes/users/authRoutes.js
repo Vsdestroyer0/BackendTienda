@@ -15,6 +15,7 @@ router.post("/register", registrar);
 
 // Login (devuelve cookie httpOnly "token")
 // body: { email, password }
+// respuesta post /login: { token }
 router.post("/login", loginUser);
 
 // Obtener sesión actual (requiere token válido)

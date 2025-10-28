@@ -1,0 +1,33 @@
+[
+    {
+        "_id":{"$oid":"6901047bec232f8cd35cfad6"},
+        "nombre":"Tenis AirMax",
+        "marca":"Nike",
+        "modelo":"2024DX",
+        "imagen":"ruta/a/la/imagen.jpg",
+        "descripcion":"Tenis deportivos con amortiguación.",
+        "skus":[
+            {
+                "sku":"AMAX-41-BLK",
+                "talla":"41",
+                "color":"Negro",
+                "precio":{
+                    "$numberInt":"1200"
+                    },
+                    "stock":{
+                        "$numberInt":"10"
+                        }},
+                        
+            {
+                "sku":"AMAX-42-WHT",
+                "talla":"42",
+                "color":"Blanco",
+                "precio":{
+                    "$numberInt":"1200"
+                    },
+                    "stock":{
+                        "$numberInt":"7"
+                        }}
+                        ],
+        "createdAt":"2025"}
+]
