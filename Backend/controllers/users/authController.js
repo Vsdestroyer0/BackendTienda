@@ -20,18 +20,18 @@ export const registrar = async (req, res) => {
     try {
         const { email, password, nombre, apellido } = req.body;
         // Validar que el email y la contraseña no estén vacíos
-        if (!email || !password || !nombre || !apellido) {
-            return res.status(400).json({ success: false, message: "Faltan datos" });
+        if (!email || !password || !nombre) {
+            return res.status(400).json({ error: "Faltan datos" });
         }
 
         // Bloquear role en el body para que no se pueda asignar roles elevados
         if (req.body.role && req.body.role !== "user") {
-        return res.status(400).json({ success: false, message: "No puedes asignar roles elevados" });
+        return res.status(400).json({ error: "No puedes asignar roles elevados" });
         }
 
         const exists = await Usuario.findOne({ email });
         if (exists) {
-        return res.status(409).json({ success: false, message: "El usuario ya existe" });
+        return res.status(409).json({ error: "El usuario ya existe" });
         }
 
         // Hashear la contraseña
@@ -42,7 +42,7 @@ export const registrar = async (req, res) => {
           email,
           password: hash,
           nombre,
-          apellido,
+          apellido: apellido && typeof apellido === "string" && apellido.trim().length > 0 ? apellido : "N/A",
           role: "user",
           emailVerified: false
         });
@@ -72,7 +72,7 @@ export const registrar = async (req, res) => {
 
     } catch (e) {
         console.error(e);
-        return res.status(500).json({ success: false, message: "Error registrando usuario" });
+        return res.status(500).json({ error: "Error registrando usuario" });
     }
 };
 
@@ -84,21 +84,21 @@ export const loginUser = async (req, res) => {
 
     // Validar que el email y la contraseña no estén vacíos
     if (!email || !password) {
-        return res.status(400).json({ success: false, message: "Faltan datos" });
+        return res.status(400).json({ error: "Faltan datos" });
     }
 
     const user = await Usuario.findOne({ email });
     if (!user) {
-        return res.status(401).json({ success: false, message: "Credenciales inválidas" });
+        return res.status(401).json({ error: "Credenciales inválidas o usuario no encontrado." });
     }
 
     const validPassword = await bcrypt.compare(password, user.password);
     if (!validPassword) {
-        return res.status(401).json({ success: false, message: "Credenciales inválidas" });
+        return res.status(401).json({ error: "Credenciales inválidas o usuario no encontrado." });
     }
 
     if (!user.emailVerified) {
-        return res.status(403).json({ success: false, message: "Cuenta no verificada. Revisa tu correo o solicita reenvío." });
+        return res.status(403).json({ error: "Cuenta no verificada. Revisa tu correo o solicita reenvío." });
     }
 
     // Generar token JWT
@@ -127,7 +127,7 @@ export const loginUser = async (req, res) => {
 // Obtener sesion
 export const getSession = (req, res) => {
     if (!req.user){
-        return res.status(401).json({ success: false, message: "No hay sesion" });
+        return res.status(401).json({ error: "No hay sesión" });
     }
     const { id, email, role, nombre } = req.user;
     // historial_compras no está modelado aún; se devuelve arreglo vacío por ahora
@@ -146,7 +146,7 @@ export const logoutUser = (req, res) => {
         });
         return res.json({ message: "Sesión cerrada correctamente." });
     } catch (e) {
-        return res.status(500).json({ success: false, message: "No se pudo cerrar la sesión" });
+        return res.status(500).json({ error: "No se pudo cerrar la sesión" });
     }
 };
 
@@ -155,23 +155,23 @@ export const verifyEmail = async (req, res) => {
   try {
     const { email, token } = req.body; // o desde query si prefieres GET
     if (!email || !token) {
-      return res.status(400).json({ success: false, message: "Datos incompletos" });
+      return res.status(400).json({ error: "Datos incompletos" });
     }
     const user = await Usuario.findOne({ email });
-    if (!user) return res.status(404).json({ success: false, message: "Usuario no encontrado" });
+    if (!user) return res.status(404).json({ error: "Usuario no encontrado" });
     if (user.emailVerified) return res.status(200).json({ message: "Correo ya verificado" });
 
     const now = new Date();
     if (!user.verificationToken || !user.verificationToken.tokenHashed || !user.verificationToken.tokenExpiry) {
-      return res.status(400).json({ success: false, message: "Token inválido" });
+      return res.status(400).json({ error: "Token inválido" });
     }
     if (user.verificationToken.tokenExpiry < now) {
-      return res.status(400).json({ success: false, message: "Token expirado" });
+      return res.status(400).json({ error: "Token expirado" });
     }
 
     const providedHash = createHash("sha256").update(token).digest("hex");
     if (providedHash !== user.verificationToken.tokenHashed) {
-      return res.status(400).json({ success: false, message: "Token inválido" });
+      return res.status(400).json({ error: "Token inválido" });
     }
 
     user.emailVerified = true;
@@ -181,7 +181,7 @@ export const verifyEmail = async (req, res) => {
     return res.json({ message: "Correo verificado correctamente" });
   } catch (e) {
     console.error(e);
-    return res.status(500).json({ success: false, message: "No se pudo verificar el correo" });
+    return res.status(500).json({ error: "No se pudo verificar el correo" });
   }
 };
 
@@ -189,7 +189,7 @@ export const verifyEmail = async (req, res) => {
 export const resendVerification = async (req, res) => {
   try {
     const { email } = req.body;
-    if (!email) return res.status(400).json({ success: false, message: "Email requerido" });
+    if (!email) return res.status(400).json({ error: "Email requerido" });
 
     const user = await Usuario.findOne({ email });
     if (!user) return res.status(404).json({ success: false, message: "Usuario no encontrado" });
@@ -199,7 +199,7 @@ export const resendVerification = async (req, res) => {
     const now = Date.now();
     const remaining = user.verificationToken?.tokenExpiry ? user.verificationToken.tokenExpiry.getTime() - now : 0;
     if (remaining > 2 * 60 * 1000) {
-      return res.status(429).json({ success: false, message: "Espera antes de solicitar otro correo" });
+      return res.status(429).json({ error: "Espera antes de solicitar otro correo" });
     }
 
     const rawToken = randomBytes(32).toString("hex");
@@ -222,6 +222,6 @@ export const resendVerification = async (req, res) => {
     return res.json({ message: "Correo de verificación reenviado" });
   } catch (e) {
     console.error(e);
-    return res.status(500).json({ success: false, message: "No se pudo reenviar verificación" });
+    return res.status(500).json({ error: "No se pudo reenviar verificación" });
   }
 };

@@ -11,6 +11,8 @@ import orderRoutes from "./Backend/routes/orders/orderRoutes.js";
 import inventoryRoutes from "./Backend/routes/inventory/inventoryRoutes.js";
 import productsRoutes from "./Backend/routes/products/productsRoutes.js";
 import cartRoutes from "./Backend/routes/cart/cartRoutes.js";
+import adminUsersRoutes from "./Backend/routes/admin/adminUsersRoutes.js";
+import posRoutes from "./Backend/routes/pos/posRoutes.js";
 // Validar conexión a la base de datos
 mongoose.connection.once("open", () => {
   console.log("[Mongo] conectado a", mongoose.connection.host, mongoose.connection.name);
@@ -67,6 +69,8 @@ async function startServer(){
     app.use("/api/auth", authRoutes);
     app.use("/api/orders", orderRoutes);
     app.use("/api/admini", inventoryRoutes);
+    app.use("/api/admin", adminUsersRoutes);
+    app.use("/api/pos", posRoutes);
     app.use("/api/products", productsRoutes);
     app.use("/api/cart", cartRoutes);
     
