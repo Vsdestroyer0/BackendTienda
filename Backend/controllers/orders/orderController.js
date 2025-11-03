@@ -100,7 +100,7 @@ export const checkoutCompra = async (req, res) => {
       const sku = e.message.split(":")[1];
       return res.status(409).json({ error: `El SKU [${sku}] no tiene stock suficiente.` });
     }
-    if (typeof e.message === "string" && e.message.startsWith("SKU_NOT_FOUND:")) {
+    if (typeof e.message === "string" && e.message.startsWith("SKU_NO_ENCONTRADO:")) {
       const sku = e.message.split(":")[1];
       return res.status(404).json({ error: `El SKU [${sku}] no existe.` });
     }

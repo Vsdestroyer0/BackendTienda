@@ -22,7 +22,7 @@ const roleGuard = (req, res, next) => {
 // Checkout (requiere validación)
 // body: {"items": [{"sku": "string", "cantidad": number}],
 //        "metodo_pago": "Tarjeta", "direccion_envio": "string"}
-router.post("/checkoutCompra", VerifyToken, roleGuard, checkoutCompra);
+router.post("/checkout", VerifyToken, roleGuard, checkoutCompra);
 
 // Exportación del router
 export default router;
