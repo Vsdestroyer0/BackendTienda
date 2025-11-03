@@ -111,3 +111,75 @@ export const checkoutCompra = async (req, res) => {
     return res.status(500).json({ error: "Error procesando la compra" });
   }
 };
+
+export const listUserOrders = async (req, res) => {
+  try {
+    const userId = req.userId;
+    const ordersCol = mongoose.connection.collection("orders");
+    const cursor = ordersCol
+      .find({ user_id: userId }, { projection: { _id: 1, createdAt: 1, total: 1, status: 1 } })
+      .sort({ createdAt: -1 });
+    const docs = await cursor.toArray();
+    const data = docs.map((d) => ({
+      order_id: d._id.toString(),
+      fecha: d.createdAt instanceof Date ? d.createdAt.toISOString() : String(d.createdAt),
+      total: d.total,
+      estatus: d.status === "pagado" ? "Pagado" : String(d.status || ""),
+    }));
+    return res.status(200).json(data);
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: "Error listando órdenes" });
+  }
+};
+
+export const getUserOrderById = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    let _id;
+    try {
+      _id = new mongoose.Types.ObjectId(orderId);
+    } catch {
+      return res.status(400).json({ error: "orderId inválido" });
+    }
+    const ordersCol = mongoose.connection.collection("orders");
+    const order = await ordersCol.findOne(
+      { _id },
+      { projection: { items: 1, total: 1, status: 1, createdAt: 1, user_id: 1 } }
+    );
+    if (!order || order.user_id !== req.userId) {
+      return res.status(404).json({ error: "Orden no encontrada" });
+    }
+
+    const productosCol = mongoose.connection.collection("productos");
+    const items = [];
+    for (const it of order.items || []) {
+      const sku = it?.sku;
+      const cantidad = it?.cantidad;
+      const precio = Number(it?.precio_unitario);
+      let nombre = "";
+      if (sku) {
+        const prod = await productosCol.findOne(
+          { skus: { $elemMatch: { sku } } },
+          { projection: { nombre: 1 } }
+        );
+        nombre = prod?.nombre || "";
+      }
+      items.push({ sku, cantidad, precio, nombre });
+    }
+
+    return res.status(200).json({
+      order_id: order._id.toString(),
+      items,
+      total: order.total,
+      estatus: order.status === "pagado" ? "Pagado" : String(order.status || ""),
+      fecha:
+        order.createdAt instanceof Date
+          ? order.createdAt.toISOString()
+          : String(order.createdAt),
+    });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: "Error obteniendo la orden" });
+  }
+};
