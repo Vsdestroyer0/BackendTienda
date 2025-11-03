@@ -8,7 +8,8 @@ import dotenv from "dotenv";
 // Importar rutas del proyecto
 import authRoutes from "./Backend/routes/users/authRoutes.js";
 import orderRoutes from "./Backend/routes/orders/orderRoutes.js";
-//import inventoryRoutes from "./Backend/routes/inventory/inventoryRoutes.js";
+import inventoryRoutes from "./Backend/routes/inventory/inventoryRoutes.js";
+import productsRoutes from "./Backend/routes/products/productsRoutes.js";
 // Validar conexión a la base de datos
 mongoose.connection.once("open", () => {
   console.log("[Mongo] conectado a", mongoose.connection.host, mongoose.connection.name);
@@ -64,7 +65,8 @@ async function startServer(){
     // Abajo se agregan las rutas de la app que estarán en la capeta routes
     app.use("/api/auth", authRoutes);
     app.use("/api/orders", orderRoutes);
-    //app.use("/api/inventory", inventoryRoutes);
+    app.use("/api/admini", inventoryRoutes);
+    app.use("/api/products", productsRoutes);
     
     // Healt check para Railway o render
     // Healt check es un endpoint que retorna un json con un objeto que tiene la propiedad ok con el valor true
