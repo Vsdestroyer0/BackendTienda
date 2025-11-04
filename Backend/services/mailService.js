@@ -29,7 +29,8 @@ export async function sendVerificationEmail(to, verifyUrl) {
     host: process.env.SMTP_HOST,
     port: parseInt(process.env.SMTP_PORT || "587", 10),
     secure: isSecure,
-    auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
+    auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+    tls: {rejectUnauthorized: false}
   });
 
   const info = await transporter.sendMail({
