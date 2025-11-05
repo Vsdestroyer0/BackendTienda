@@ -1,7 +1,9 @@
-// Importaciones
-import nodemailer from "nodemailer";
+import sgMail from '@sendgrid/mail';
 
-// Función que genera el HTML de verificación
+// Inicializa SendGrid con tu API Key
+sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+
+// HTML para el email
 function verificationEmailHtml(verifyUrl) {
   return `
     <div style="font-family: Arial, Helvetica, sans-serif; background: #f9f9f9; padding: 32px;">
@@ -24,25 +26,19 @@ function verificationEmailHtml(verifyUrl) {
 }
 
 export async function sendVerificationEmail(to, verifyUrl) {
-  const isSecure = process.env.SMTP_PORT === "465";
-  const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: parseInt(process.env.SMTP_PORT || "587", 10),
-    secure: isSecure,
-    auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
-    tls: {rejectUnauthorized: false}
-  });
-
-  const info = await transporter.sendMail({
-    from: `"Tienda" <${process.env.FROM_EMAIL}>`,
+  const msg = {
     to,
-    subject: "¡Verifica tu cuenta en Tienda!",
-    // Separé el html para mejor legibilidad
-    html: verificationEmailHtml(verifyUrl)  
-  });
+    from: process.env.FROM_EMAIL, // Debe ser un email verificado en SendGrid
+    subject: '¡Verifica tu cuenta en Tienda!',
+    html: verificationEmailHtml(verifyUrl),
+  };
 
-  const ok = await transporter.verify();
-  console.log("[SMTP verify]", ok);
-
-  return info.messageId;
+  try {
+    const response = await sgMail.send(msg);
+    console.log('[SendGrid response]', response);
+    return response[0].headers['x-message-id'] || null;
+  } catch (error) {
+    console.error('[SendGrid Error]', error);
+    throw error;
+  }
 }
