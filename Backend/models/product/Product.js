@@ -16,9 +16,11 @@ const variantSchema = new mongoose.Schema({
 });
 
 const productSchema = new mongoose.Schema({
-    name: { type: String, required: true },
     brand: { type: String, required: true },
-    // ... (price, description, etc.) ...
+    category: { type: String, required: true },
+    price: { type: Number, required: true },
+    salePrice: { type: Number }, // Este es opcional, no 'required'
+    description: { type: String, required: true },
 
     // ESTA ES LA LÍNEA CRÍTICA:
     variants: [variantSchema], // <-- El arreglo que espera el frontend
