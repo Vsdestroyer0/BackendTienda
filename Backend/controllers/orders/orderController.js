@@ -29,35 +29,60 @@ export const checkoutCompra = async (req, res) => {
     try {
       await session.withTransaction(async () => {
         for (const it of items) {
-          const { sku, cantidad } = it || {};
-          if (!sku || typeof cantidad !== "number" || cantidad <= 0) {
+          const { sku, size, cantidad } = it || {}; // <-- 'size' es nuevo
+          if (!sku || !size || typeof cantidad !== "number" || cantidad <= 0) {
             throw new Error("BAD_ITEM");
           }
 
-          const productosCol = mongoose.connection.collection("productos");
-
-          const found = await productosCol.findOne(
-            { skus: { $elemMatch: { sku } } },
-            { session, projection: { skus: { $elemMatch: { sku } }, nombre: 1 } }
-          );
-          if (!found || !found.skus || !found.skus[0]) {
-            throw new Error(`SKU_NOT_FOUND:${sku}`);
-          }
-          const matched = found.skus[0];
-          const precioUnit = Number(matched.precio);
-
-          const updateRes = await productosCol.updateOne(
-            { skus: { $elemMatch: { sku, stock: { $gte: cantidad } } } },
-            { $inc: { "skus.$.stock": -cantidad } },
+          // ¡YA NO USAMOS 'productosCol'!
+          const product = await Product.findOne(
+            { "variants.sku": sku },
             { session }
           );
-          if (updateRes.modifiedCount === 0) {
-            throw new Error(`INSUFFICIENT:${sku}`);
+
+          if (!product) {
+            throw new Error(`SKU_NOT_FOUND:${sku}`);
           }
 
-          const subtotal = precioUnit * cantidad;
-          total += subtotal;
-          lineItems.push({ sku, cantidad, precio_unitario: precioUnit, subtotal });
+          // Encontrar la variante y la talla específicas
+          const variant = product.variants.find(v => v.sku === sku);
+          const sizeInfo = variant?.sizes.find(s => s.size === size);
+
+          if (!sizeInfo) {
+            throw new Error(`SIZE_NOT_FOUND:${sku}/${size}`);
+          }
+
+          const precioUnit = Number(product.salePrice || product.price); // Usar precio base
+
+          // ¡LA QUERY MÁS DIFÍCIL!
+          // Actualizar el stock anidado atómicamente
+          const updateRes = await Product.updateOne(
+            {
+              _id: product._id,
+              "variants.sku": sku,
+              "variants.sizes.size": size,
+              "variants.sizes.stock": { $gte: cantidad } // Asegurar stock
+            },
+            {
+              // Decrementar el stock
+              $inc: { "variants.$[v].sizes.$[s].stock": -cantidad }
+            },
+            {
+              // 'arrayFilters' le dice a Mongoose qué elementos [v] y [s] actualizar
+              arrayFilters: [
+                { "v.sku": sku },
+                { "s.size": size }
+              ],
+              session
+            }
+          );
+
+          if (updateRes.modifiedCount === 0) {
+            throw new Error(`INSUFFICIENT:${sku}/${size}`);
+          }
+
+          total += (precioUnit * cantidad);
+          lineItems.push({ sku, size, cantidad, precio_unitario: precioUnit, /*...*/ });
         }
 
         const ordersCol = mongoose.connection.collection("orders");
@@ -74,7 +99,7 @@ export const checkoutCompra = async (req, res) => {
           createdAt: now,
           created_by_role: req.user?.role || "user",
         };
-        if (req.user?.role === "cajero"){
+        if (req.user?.role === "cajero") {
           orderDoc.cajero_id = req.userId;
           orderDoc.cajero_nombre = req.user?.nombre;
         }

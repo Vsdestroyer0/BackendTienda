@@ -1,8 +1,8 @@
 // importaciones de paquetes
 import mongoose from "mongoose";
+import Product from '../../models/product/Product.js';
 
 const CARTS_COL = () => mongoose.connection.collection("carts");
-const PRODUCTS_COL = () => mongoose.connection.collection("productos");
 
 // GET /api/cart
 export const getCart = async (req, res) => {
@@ -45,18 +45,23 @@ export const getCart = async (req, res) => {
 export const addToCart = async (req, res) => {
   try {
     const userId = req.userId;
-    const { sku, cantidad } = req.body || {};
-    if (!sku || typeof cantidad !== "number" || !Number.isInteger(cantidad) || cantidad <= 0) {
-      return res.status(400).json({ success: false, message: "Parámetros inválidos" });
+    const { sku, size, cantidad } = req.body || {}; // <-- 'size' es nuevo
+
+    if (!sku || !size || typeof cantidad !== "number" || cantidad <= 0) {
+      return res.status(400).json({ success: false, message: "Parámetros inválidos (sku, size, cantidad)" });
     }
 
-    // Validar SKU existente
-    const prod = await PRODUCTS_COL().findOne(
-      { skus: { $elemMatch: { sku } } },
+    // Validar SKU y Talla contra el modelo Product
+    const prod = await Product.findOne(
+      {
+        "variants.sku": sku,
+        "variants.sizes.size": size
+      },
       { projection: { _id: 1 } }
     );
+
     if (!prod) {
-      return res.status(404).json({ success: false, message: "SKU no encontrado" });
+      return res.status(404).json({ success: false, message: "Producto/Talla no encontrado" });
     }
 
     const now = new Date();
