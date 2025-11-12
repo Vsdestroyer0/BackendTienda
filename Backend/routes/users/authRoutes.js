@@ -4,6 +4,8 @@ import { Router } from "express";
 // Importaciones de paquetes dentro del proyecto
 import { registrar, loginUser, getSession, logoutUser, verifyEmail, resendVerification } from "../../controllers/users/authController.js";
 import { VerifyToken } from "../../middleware/authMiddleware.js";
+import { googleAuth } from '../../controllers/users/googleAuthController.js';
+
 
 // Creación del router
 // Router es un objeto que contiene todas las rutas de la app
@@ -33,6 +35,10 @@ router.post("/verify", verifyEmail);
 // Reenviar verificación
 // body: { email }
 router.post("/resend-verification", resendVerification);
+
+// Autenticación con Google
+// body: { idToken }
+router.post('/google', googleAuth);
 
 // exportacion del router
 export default router;
