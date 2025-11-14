@@ -120,13 +120,42 @@ export const getInventoryStats = async (req, res) => {
 };
 
 
-//este si devolvera todo, posiblemente habra que refactorizar para manejar paginacion
+//obtener toda la data de productos pero ahora acepta parametro para pagina ion
 export const getInventoryProducts = async (req, res) => {
   try {
-    const products = await Product.find({})
-      .sort({ createdAt: -1 }); // Ordenar por más nuevo
+    // 1. Leer parámetros de la query (con valores por defecto)
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20; // 20 productos por página
+    const skip = (page - 1) * limit;
 
-    res.status(200).json(products);
+    // 2. Crear las dos consultas (una para los datos, una para el conteo total)
+    const productsPromise = Product.find({})
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    const countPromise = Product.countDocuments({});
+
+    // 3. Ejecutarlas en paralelo para máxima eficiencia
+    const [products, totalProducts] = await Promise.all([
+      productsPromise,
+      countPromise
+    ]);
+
+    // 4. Calcular el total de páginas
+    const totalPages = Math.ceil(totalProducts / limit);
+
+    // 5. Enviar la respuesta con la data y la metadata de paginación
+    res.status(200).json({
+      data: products,
+      pagination: {
+        currentPage: page,
+        totalPages: totalPages,
+        totalProducts: totalProducts,
+        limit: limit
+      }
+    });
+
   } catch (e) {
     console.error("Error obteniendo productos de inventario:", e);
     res.status(500).json({ message: "Error al obtener productos" });
