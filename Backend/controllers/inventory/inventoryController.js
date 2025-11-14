@@ -60,6 +60,66 @@ export const createProductV2 = async (req, res) => {
   }
 };
 
+//obtener estaditcas sobre los productos 
+export const getInventoryStats = async (req, res) => {
+  try {
+    // 1. Calcular 'Productos en Oferta'
+    const onSaleCountPromise = Product.countDocuments({
+      salePrice: { $exists: true, $gt: 0 },
+    });
+
+    // 2. Calcular 'Items Totales', 'Bajo Stock' y 'Sin Stock' con Agregaciones
+    // (Esto es el 'flatMap' anidado, pero hecho en la base de datos)
+    const stockStatsPromise = Product.aggregate([
+      // "Desanidar" el array de variantes
+      { $unwind: "$variants" },
+      // "Desanidar" el array de tallas
+      { $unwind: "$variants.sizes" },
+      // Ahora tenemos una fila por cada SKU/Talla
+      // Calculamos todos los KPIs de stock en una sola pasada
+      {
+        $group: {
+          _id: null, // Agrupar todo en un solo documento
+          totalItems: { $sum: 1 }, // Contar el total de filas (SKU/Talla)
+          lowStockCount: {
+            $sum: {
+              // Si el stock está entre 1 y 9 (puedes ajustar el 10), suma 1
+              $cond: [{ $and: [{ $gt: ["$variants.sizes.stock", 0] }, { $lt: ["$variants.sizes.stock", 10] }] }, 1, 0]
+            }
+          },
+          noStockCount: {
+            $sum: {
+              // Si el stock es 0, suma 1
+              $cond: [{ $eq: ["$variants.sizes.stock", 0] }, 1, 0]
+            }
+          }
+        }
+      }
+    ]);
+
+    // 3. Ejecutar todas las consultas en paralelo
+    const [onSaleCount, stockStatsResult] = await Promise.all([
+      onSaleCountPromise,
+      stockStatsPromise,
+    ]);
+
+    const stats = stockStatsResult[0] || {}; // El resultado de aggregate es un array
+
+    // 4. Enviar la respuesta
+    res.status(200).json({
+      onSaleCount: onSaleCount || 0,
+      totalItems: stats.totalItems || 0,
+      lowStockCount: stats.lowStockCount || 0,
+      noStockCount: stats.noStockCount || 0,
+    });
+
+  } catch (e) {
+    console.error("Error obteniendo stats de inventario:", e);
+    res.status(500).json({ message: "Error al obtener estadísticas" });
+  }
+};
+
+
 //este si devolvera todo, posiblemente habra que refactorizar para manejar paginacion
 export const getInventoryProducts = async (req, res) => {
   try {
@@ -72,6 +132,7 @@ export const getInventoryProducts = async (req, res) => {
     res.status(500).json({ message: "Error al obtener productos" });
   }
 };
+
 
 //!deben refactorizarse porque cambio la estructura de los productos
 // (DEPRECADO) Ajusta el stock de una variante específica (SKU)

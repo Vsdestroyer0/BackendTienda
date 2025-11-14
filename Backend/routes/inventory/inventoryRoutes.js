@@ -3,9 +3,12 @@ import { Router } from "express";
 
 // Importaciones internas
 import { VerifyToken, verifyRole } from "../../middleware/authMiddleware.js";
-import { getCloudinarySignature, createProductV2, getInventoryProducts } from "../../controllers/inventory/inventoryController.js";
+import { getCloudinarySignature, createProductV2, getInventoryProducts, getInventoryStats } from "../../controllers/inventory/inventoryController.js";
 
 const router = Router();
+
+//ruta para los kpis, o sea datos como numero de productos, inventario bajo, etc
+router.get("/stats", VerifyToken, verifyRole("admon_inventario"), getInventoryStats);
 
 //este es para la tabla de productos para el admin
 router.get("/products", VerifyToken, verifyRole("admon_inventario"), getInventoryProducts);
@@ -15,7 +18,6 @@ router.post("/upload-signature", VerifyToken, verifyRole("admon_inventario"), ge
 
 //endpoint para crear productos
 router.post("/products-v2", VerifyToken, verifyRole("admon_inventario"), createProductV2);
-
 
 
 // Exportación del router creo que ya les quedó claro (espero que si)
