@@ -60,6 +60,18 @@ export const createProductV2 = async (req, res) => {
   }
 };
 
+//este si devolvera todo, posiblemente habra que refactorizar para manejar paginacion
+export const getInventoryProducts = async (req, res) => {
+  try {
+    const products = await Product.find({})
+      .sort({ createdAt: -1 }); // Ordenar por más nuevo
+
+    res.status(200).json(products);
+  } catch (e) {
+    console.error("Error obteniendo productos de inventario:", e);
+    res.status(500).json({ message: "Error al obtener productos" });
+  }
+};
 
 //!deben refactorizarse porque cambio la estructura de los productos
 // (DEPRECADO) Ajusta el stock de una variante específica (SKU)
