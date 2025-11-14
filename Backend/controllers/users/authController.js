@@ -96,10 +96,10 @@ export const loginUser = async (req, res) => {
     if (!validPassword) {
         return res.status(401).json({ error: "Credenciales inválidas o usuario no encontrado." });
     }
-
+    /*
     if (!user.emailVerified) {
-        return res.status(403).json({ error: "Cuenta no verificada. Revisa tu correo o solicita reenvío." });
-    }
+        return res.status(403).json({ error: "Cuenta no verificada. Revisa tu correo o solicita reenvío." });    
+    }*/
 
     // Generar token JWT
     // Los JWT son tokens que se usan para autenticar a los usuarios
