@@ -14,7 +14,7 @@ router.get("/stats", VerifyToken, verifyRole("admon_inventario"), getInventorySt
 router.get("/products", VerifyToken, verifyRole("admon_inventario"), getInventoryProducts);
 
 //obtener firma de cloudinary
-router.post("/upload-signature", VerifyToken, verifyRole("admon_inventario"), getCloudinarySignature);
+router.get("/upload-signature", VerifyToken, verifyRole("admon_inventario"), getCloudinarySignature);
 
 //endpoint para crear productos
 router.post("/products-v2", VerifyToken, verifyRole("admon_inventario"), createProductV2);
