@@ -13,6 +13,8 @@ import productsRoutes from "./Backend/routes/products/productsRoutes.js";
 import cartRoutes from "./Backend/routes/cart/cartRoutes.js";
 import adminUsersRoutes from "./Backend/routes/admin/adminUsersRoutes.js";
 import posRoutes from "./Backend/routes/pos/posRoutes.js";
+import addressRoutes from "./Backend/routes/users/address.routes.js";
+
 // Validar conexión a la base de datos
 mongoose.connection.once("open", () => {
   console.log("[Mongo] conectado a", mongoose.connection.host, mongoose.connection.name);
@@ -73,6 +75,7 @@ async function startServer(){
     app.use("/api/pos", posRoutes);
     app.use("/api/products", productsRoutes);
     app.use("/api/cart", cartRoutes);
+    app.use('/api', addressRoutes);
     
     // Healt check para Railway o render
     // Healt check es un endpoint que retorna un json con un objeto que tiene la propiedad ok con el valor true

@@ -99,8 +99,8 @@ export const loginUser = async (req, res) => {
     /*
     if (!user.emailVerified) {
         return res.status(403).json({ error: "Cuenta no verificada. Revisa tu correo o solicita reenvío." });    
-    }*/
-
+    }
+    */
     // Generar token JWT
     // Los JWT son tokens que se usan para autenticar a los usuarios
     // email: user.email, role: user.role, id: user._id.toString() son los datos que se van a enviar en el token
@@ -210,7 +210,7 @@ export const resendVerification = async (req, res) => {
       tokenExpiry: new Date(now + expiresInMs)
     };
     await user.save();
-
+    /*
     const base = process.env.APP_URL_LOCAL || process.env.APP_URL_PRODUCTION || "http://localhost:5173";
     const verifyUrl = `${base}/verify?token=${rawToken}&email=${encodeURIComponent(email)}`;
     try {
@@ -218,7 +218,7 @@ export const resendVerification = async (req, res) => {
     } catch (mailErr) {
       console.error("No se pudo enviar email de verificación:", mailErr);
     }
-
+    */
     return res.json({ message: "Correo de verificación reenviado" });
   } catch (e) {
     console.error(e);
