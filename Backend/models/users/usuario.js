@@ -11,6 +11,7 @@ const usuarioSchema = new mongoose.Schema({
     role: { type: String, enum: ["user", "cajero", "admon_inventario", "admon_roles"], default: "user" },
     emailVerified: { type: Boolean, default: false },
     verificationToken: { tokenHashed: String, tokenExpiry: Date },
+    passwordResetToken: { tokenHashed: String, tokenExpiry: Date },
     authProvider: { type: String, enum: ["local", "google"], default: "local" },
     security: {
         enabled: { type: Boolean, default: false },

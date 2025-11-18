@@ -8,6 +8,7 @@ import { sendVerificationEmail } from "../../services/mailService.js";
 
 // Importaciones de modelos
 import Usuario from "../../models/users/usuario.js";
+import mongoose from "mongoose";
 const secretKey = process.env.JWT_SECRET;
 
 // Configuración de bcrypt
@@ -199,7 +200,7 @@ export const resendVerification = async (req, res) => {
     if (!email) return res.status(400).json({ error: "Email requerido" });
 
     const user = await Usuario.findOne({ email });
-    if (!user) return res.status(404).json({ success: false, message: "Usuario no encontrado" });
+    if (!user) return res.status(404).json({ error: "Usuario no encontrado" });
     if (user.emailVerified) return res.status(200).json({ message: "Correo ya verificado" });
 
     const now = Date.now();
@@ -233,6 +234,25 @@ export const resendVerification = async (req, res) => {
 };
 
 const normalizeAnswer = (s) => (s || "").normalize("NFKD").replace(/\p{Diacritic}/gu, "").toLowerCase().trim().replace(/\s+/g, " ");
+
+export const getSecurityQuestions = async (req, res) => {
+  try {
+    const { email } = req.query;
+    if (!email) return res.status(400).json({ error: "Email requerido" });
+
+    const user = await Usuario.findOne({ email });
+    if (!user) return res.status(404).json({ error: "Usuario no encontrado" });
+    if (!user.security?.enabled || !Array.isArray(user.security.questions) || user.security.questions.length === 0) {
+      return res.status(400).json({ error: "El usuario no tiene preguntas configuradas" });
+    }
+
+    const questionList = user.security.questions.map((q) => ({ questionId: q.questionId }));
+    return res.json({ questions: questionList });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: "No se pudieron obtener las preguntas" });
+  }
+};
 
 export const setupSecurityQuestions = async (req, res) => {
   try {
@@ -297,9 +317,68 @@ export const verifySecurityAnswers = async (req, res) => {
       return res.status(401).json({ error: "Respuestas incorrectas" });
     }
 
-    return res.json({ ok: true });
+    const rawToken = randomBytes(32).toString("hex");
+    const tokenHashed = createHash("sha256").update(rawToken).digest("hex");
+    const expiresInMs = 15 * 60 * 1000;
+    user.passwordResetToken = {
+      tokenHashed,
+      tokenExpiry: new Date(Date.now() + expiresInMs)
+    };
+    await user.save();
+
+    return res.json({ ok: true, resetToken: rawToken });
   } catch (e) {
     console.error(e);
     return res.status(500).json({ error: "Error verificando respuestas" });
+  }
+};
+
+export const getSecurityCatalog = async (req, res) => {
+  try {
+    // Lee desde la colección 'Preguntas'
+    const col = mongoose.connection.collection('Preguntas');
+    const docs = await col.find({ active: { $ne: false } }).project({ _id: 0, code: 1, text: 1 }).toArray();
+    const catalog = (docs || []).map(d => ({ id: d.code, label: d.text }));
+    return res.json({ catalog });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: 'No se pudo obtener el catálogo de preguntas' });
+  }
+};
+
+export const resetPasswordWithToken = async (req, res) => {
+  try {
+    const { email, token, newPassword } = req.body;
+    if (!email || !token || !newPassword) {
+      return res.status(400).json({ error: "Datos incompletos" });
+    }
+    if (newPassword.length < 8) {
+      return res.status(400).json({ error: "La nueva contraseña debe tener al menos 8 caracteres" });
+    }
+
+    const user = await Usuario.findOne({ email });
+    if (!user) return res.status(404).json({ error: "Usuario no encontrado" });
+    const storedToken = user.passwordResetToken;
+    if (!storedToken?.tokenHashed || !storedToken?.tokenExpiry) {
+      return res.status(400).json({ error: "Token inválido" });
+    }
+    if (storedToken.tokenExpiry < new Date()) {
+      return res.status(400).json({ error: "Token expirado" });
+    }
+
+    const providedHash = createHash("sha256").update(token).digest("hex");
+    if (providedHash !== storedToken.tokenHashed) {
+      return res.status(400).json({ error: "Token inválido" });
+    }
+
+    const hash = await bcrypt.hash(newPassword, saltRounds);
+    user.password = hash;
+    user.passwordResetToken = undefined;
+    await user.save();
+
+    return res.json({ message: "Contraseña actualizada correctamente" });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: "No se pudo actualizar la contraseña" });
   }
 };
