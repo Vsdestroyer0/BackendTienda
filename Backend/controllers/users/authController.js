@@ -202,7 +202,6 @@ export const resendVerification = async (req, res) => {
     if (!user) return res.status(404).json({ success: false, message: "Usuario no encontrado" });
     if (user.emailVerified) return res.status(200).json({ message: "Correo ya verificado" });
 
-    // Rate limit básico: si faltan >2 minutos para expirar, no reemitir
     const now = Date.now();
     const remaining = user.verificationToken?.tokenExpiry ? user.verificationToken.tokenExpiry.getTime() - now : 0;
     if (remaining > 2 * 60 * 1000) {
@@ -230,5 +229,77 @@ export const resendVerification = async (req, res) => {
   } catch (e) {
     console.error(e);
     return res.status(500).json({ error: "No se pudo reenviar verificación" });
+  }
+};
+
+const normalizeAnswer = (s) => (s || "").normalize("NFKD").replace(/\p{Diacritic}/gu, "").toLowerCase().trim().replace(/\s+/g, " ");
+
+export const setupSecurityQuestions = async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    const { questions } = req.body;
+    if (!userId) return res.status(401).json({ error: "No autenticado" });
+    if (!Array.isArray(questions) || questions.length < 2 || questions.length > 3) {
+      return res.status(400).json({ error: "Debes enviar 2 o 3 preguntas" });
+    }
+
+    const user = await Usuario.findById(userId);
+    if (!user) return res.status(404).json({ error: "Usuario no encontrado" });
+    if (user.authProvider === "google") {
+      return res.status(400).json({ error: "No aplica para usuarios de Google" });
+    }
+
+    const secured = [];
+    for (const q of questions) {
+      const { questionId, answer } = q || {};
+      if (!questionId || typeof answer !== "string" || !answer.trim()) {
+        return res.status(400).json({ error: "Formato inválido de preguntas" });
+      }
+      const salt = randomBytes(16).toString("hex");
+      const toHash = `${normalizeAnswer(answer)}:${salt}`;
+      const answerHash = await bcrypt.hash(toHash, saltRounds);
+      secured.push({ questionId, answerHash, salt });
+    }
+
+    user.security = { enabled: true, questions: secured };
+    await user.save();
+    return res.json({ message: "Preguntas de seguridad configuradas" });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: "No se pudieron configurar las preguntas" });
+  }
+};
+
+export const verifySecurityAnswers = async (req, res) => {
+  try {
+    const { email, answers } = req.body;
+    if (!email || !Array.isArray(answers) || answers.length < 2) {
+      return res.status(400).json({ error: "Datos incompletos" });
+    }
+
+    const user = await Usuario.findOne({ email });
+    if (!user) return res.status(404).json({ error: "Usuario no encontrado" });
+    if (!user.security?.enabled || !Array.isArray(user.security.questions) || user.security.questions.length === 0) {
+      return res.status(400).json({ error: "El usuario no tiene preguntas configuradas" });
+    }
+
+    let correct = 0;
+    for (const a of answers) {
+      const { questionId, answer } = a || {};
+      const stored = user.security.questions.find(q => q.questionId === questionId);
+      if (!stored) continue;
+      const toCheck = `${normalizeAnswer(answer)}:${stored.salt}`;
+      const ok = await bcrypt.compare(toCheck, stored.answerHash);
+      if (ok) correct += 1;
+    }
+
+    if (correct < Math.min(2, user.security.questions.length)) {
+      return res.status(401).json({ error: "Respuestas incorrectas" });
+    }
+
+    return res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: "Error verificando respuestas" });
   }
 };
