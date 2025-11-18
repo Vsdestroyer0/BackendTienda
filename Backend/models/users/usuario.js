@@ -10,7 +10,8 @@ const usuarioSchema = new mongoose.Schema({
     password: { type: String, required: false },
     role: { type: String, enum: ["user", "cajero", "admon_inventario", "admon_roles"], default: "user" },
     emailVerified: { type: Boolean, default: false },
-    verificationToken: { tokenHashed: String, tokenExpiry: Date }
+    verificationToken: { tokenHashed: String, tokenExpiry: Date },
+    favorites: [{ type: String, default: [] }]
 }, 
 {
     // timestamps: true agrega automaticamente dos campos createdAt y updatedAt en la base de datos
