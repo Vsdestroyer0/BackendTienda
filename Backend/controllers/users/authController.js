@@ -19,7 +19,8 @@ const saltRounds = parseInt(process.env.BCRYPT_SALT_ROUNDS);
 // res: respuesta
 export const registrar = async (req, res) => {
   try {
-    const { email, password, nombre, apellido } = req.body;
+    const { email, password, nombre, apellido, securityQuestions } = req.body;
+
     // Validar que el email y la contraseña no estén vacíos
     if (!email || !password || !nombre) {
       return res.status(400).json({ error: "Faltan datos" });
@@ -47,6 +48,23 @@ export const registrar = async (req, res) => {
       role: "user",
       emailVerified: false
     });
+
+    // Opcional: configurar preguntas de seguridad si vienen en el registro
+    if (Array.isArray(securityQuestions) && securityQuestions.length >= 2 && securityQuestions.length <= 3) {
+      const secured = [];
+      for (const q of securityQuestions) {
+        const { questionId, answer } = q || {};
+        if (!questionId || typeof answer !== "string" || !answer.trim()) {
+          return res.status(400).json({ error: "Formato inválido de preguntas" });
+        }
+        const normalize = (s) => (s || "").normalize("NFKD").replace(/\p{Diacritic}/gu, "").toLowerCase().trim().replace(/\s+/g, " ");
+        const salt = randomBytes(16).toString("hex");
+        const toHash = `${normalize(answer)}:${salt}`;
+        const answerHash = await bcrypt.hash(toHash, saltRounds);
+        secured.push({ questionId, answerHash, salt });
+      }
+      newUser.security = { enabled: true, questions: secured };
+    }
 
     // Generar token crudo y hash para verificación
     const rawToken = randomBytes(32).toString("hex");
@@ -128,18 +146,35 @@ export const loginUser = async (req, res) => {
     apellido: user.apellido,
     email: user.email,
     role: user.role,
+    emailVerified: user.emailVerified,
+    security: { enabled: !!(user.security && user.security.enabled) },
     historial_compras: [] //!necesitamos cambiar esto
   });
 };
 
 // Obtener sesion
-export const getSession = (req, res) => {
+export const getSession = async (req, res) => {
   if (!req.user) {
     return res.status(401).json({ error: "No hay sesión" });
   }
-  const { id, email, role, nombre } = req.user;
-  // historial_compras no está modelado aún; se devuelve arreglo vacío por ahora
-  res.json({ id, email, role, nombre, historial_compras: [] });
+  try {
+    const user = await Usuario.findById(req.user.id);
+    if (!user) {
+      return res.status(401).json({ error: "No hay sesión" });
+    }
+    res.json({
+      id: user._id.toString(),
+      email: user.email,
+      role: user.role,
+      nombre: user.nombre,
+      emailVerified: !!user.emailVerified,
+      security: { enabled: !!(user.security && user.security.enabled) },
+      historial_compras: [],
+    });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: "No se pudo obtener la sesión" });
+  }
 };
 
 // Cerrar sesión: limpiar cookie de autenticación
@@ -240,7 +275,7 @@ export const getSecurityQuestions = async (req, res) => {
     const { email } = req.query;
     if (!email) return res.status(400).json({ error: "Email requerido" });
 
-    const user = await Usuario.findOne({ email });
+    const user = await Usuario.findOne({ email: String(email).toLowerCase() });
     if (!user) return res.status(404).json({ error: "Usuario no encontrado" });
     if (!user.security?.enabled || !Array.isArray(user.security.questions) || user.security.questions.length === 0) {
       return res.status(400).json({ error: "El usuario no tiene preguntas configuradas" });
@@ -297,7 +332,7 @@ export const verifySecurityAnswers = async (req, res) => {
       return res.status(400).json({ error: "Datos incompletos" });
     }
 
-    const user = await Usuario.findOne({ email });
+    const user = await Usuario.findOne({ email: String(email).toLowerCase() });
     if (!user) return res.status(404).json({ error: "Usuario no encontrado" });
     if (!user.security?.enabled || !Array.isArray(user.security.questions) || user.security.questions.length === 0) {
       return res.status(400).json({ error: "El usuario no tiene preguntas configuradas" });

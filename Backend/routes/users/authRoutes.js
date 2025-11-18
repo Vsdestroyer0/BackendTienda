@@ -2,7 +2,7 @@
 import { Router } from "express";
 
 // Importaciones de paquetes dentro del proyecto
-import { registrar, loginUser, getSession, logoutUser, verifyEmail, resendVerification, setupSecurityQuestions, verifySecurityAnswers, getSecurityCatalog } from "../../controllers/users/authController.js";
+import { registrar, loginUser, getSession, logoutUser, verifyEmail, resendVerification, setupSecurityQuestions, verifySecurityAnswers, getSecurityCatalog, getSecurityQuestions, resetPasswordWithToken } from "../../controllers/users/authController.js";
 import { VerifyToken } from "../../middleware/authMiddleware.js";
 import { googleAuth } from '../../controllers/users/googleAuthController.js';
 
@@ -47,6 +47,14 @@ router.post("/security/verify", verifySecurityAnswers);
 // Catálogo de preguntas de seguridad
 // GET /auth/security/catalog -> { catalog: [{ id, label }, ...] }
 router.get("/security/catalog", getSecurityCatalog);
+
+// Obtener preguntas de seguridad por email (recuperación)
+// GET /auth/security/questions?email=foo@bar.com -> { questions: [{ questionId }, ...] }
+router.get("/security/questions", getSecurityQuestions);
+
+// Resetear contraseña con token emitido tras validar preguntas de seguridad
+// body: { email, token, newPassword }
+router.post("/security/reset-password", resetPasswordWithToken);
 
 // Autenticación con Google
 // body: { idToken }
