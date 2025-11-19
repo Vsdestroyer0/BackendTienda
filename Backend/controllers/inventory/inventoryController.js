@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import { v2 as cloudinary } from 'cloudinary';
 import Product from '../../models/product/Product.js';
 
+
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
@@ -295,5 +296,68 @@ export const createProduct = async (req, res) => {
   } catch (e) {
     console.error(e);
     return res.status(500).json({ success: false, message: "Error creando producto (colección vieja)" });
+  }
+};
+
+
+export const adjustStock = async (req, res) => {
+  try {
+    const { sku, size, adjustment } = req.body; // adjustment  1 o -1
+
+    if (!sku || !size || typeof adjustment !== 'number') {
+      return res.status(400).json({ message: "Datos incompletos" });
+    }
+
+    // buscar el producto que tenga ese SKU y esa Talla
+    const filter = {
+      "variants.sku": sku,
+      "variants.sizes.size": size
+    };
+
+    //! si es negativo, validar stock, no se hacerlo xd
+    if (adjustment < 0) {
+      // $gte: mayor o igual a (ej: si adjustment es -1, necesitamos stock >= 1)
+      // Nota: Math.abs(-1) = 1
+      // Sin embargo, MongoDB query anidado complejo es difícil. 
+      // Para simplificar y seguridad, usaremos la validación atómica en el update.
+      // Mongoose permite condiciones en el arrayFilter o en el query principal.
+
+      // Agregamos condición al query principal para no encontrar el doc si no hay stock
+      // "variants.sizes" debe tener un elemento con ese size Y stock suficiente
+      // Esto es un poco complejo de escribir en una sola línea de query con nested arrays.
+      // Vamos a confiar en que el updateOne retornará modifiedCount: 0 si falla el arrayFilter
+    }
+
+    const result = await Product.updateOne(
+      {
+        "variants.sku": sku,
+        "variants.sizes.size": size,
+        // ESTO EVITA NEGATIVOS: Solo actualiza si el stock resultante será >= 0
+        // Pero requiere saber qué elemento es.
+        // Usaremos una estrategia más simple: update normal y validamos en frontend por ahora,
+        // o mejor: usamos arrayFilters con condición.
+      },
+      {
+        $inc: { "variants.$[v].sizes.$[s].stock": adjustment }
+      },
+      {
+        arrayFilters: [
+          { "v.sku": sku },
+          // solo si el stock + ajuste >= 0
+          { "s.size": size, "s.stock": { $gte: -adjustment < 0 ? 0 : -adjustment } }
+        ]
+      }
+    );
+
+    if (result.modifiedCount === 0) {
+      // Si no se modificó nada, probablemente no había stock suficiente o no existe el SKU
+      return res.status(400).json({ message: "No se pudo ajustar (¿Stock insuficiente?)" });
+    }
+
+    res.json({ message: "Stock actualizado" });
+
+  } catch (error) {
+    console.error("Error ajustando stock:", error);
+    res.status(500).json({ message: "Error del servidor" });
   }
 };
