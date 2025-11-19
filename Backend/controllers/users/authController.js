@@ -121,7 +121,17 @@ export const loginUser = async (req, res) => {
     });
 
     // Ya jaló el login :D
-    res.json({ token });
+    // Ya jaló el login :D
+    res.json({
+        token,
+        user: {
+            id: user._id.toString(),
+            email: user.email,
+            nombre: user.nombre, // <-- ¡Esto es lo que faltaba!
+            apellido: user.apellido,
+            role: user.role
+        }
+    });
 };
 
 // Obtener sesion
