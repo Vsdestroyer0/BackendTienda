@@ -68,6 +68,9 @@ export const getInventoryStats = async (req, res) => {
       salePrice: { $exists: true, $gt: 0 },
     });
 
+
+    const totalProductsPromise = Product.countDocuments({});
+
     // 2. Calcular 'Items Totales', 'Bajo Stock' y 'Sin Stock' con Agregaciones
     // (Esto es el 'flatMap' anidado, pero hecho en la base de datos)
     const stockStatsPromise = Product.aggregate([
@@ -98,17 +101,19 @@ export const getInventoryStats = async (req, res) => {
     ]);
 
     // 3. Ejecutar todas las consultas en paralelo
-    const [onSaleCount, stockStatsResult] = await Promise.all([
+    const [onSaleCount, totalProducts, stockStatsResult] = await Promise.all([
       onSaleCountPromise,
+      totalProductsPromise,
       stockStatsPromise,
     ]);
-
     const stats = stockStatsResult[0] || {}; // El resultado de aggregate es un array
 
     // 4. Enviar la respuesta
     res.status(200).json({
       onSaleCount: onSaleCount || 0,
+      totalProducts: totalProducts || 0,
       totalItems: stats.totalItems || 0,
+      totalStock: stats.totalStock || 0,
       lowStockCount: stats.lowStockCount || 0,
       noStockCount: stats.noStockCount || 0,
     });
