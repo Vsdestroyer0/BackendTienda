@@ -2,17 +2,29 @@
 import { Router } from "express";
 
 // Importaciones internas
-import { adjustSkuStock, createProduct } from "../../controllers/inventory/inventoryController.js";
 import { VerifyToken, verifyRole } from "../../middleware/authMiddleware.js";
+import { getCloudinarySignature, createProductV2, getInventoryProducts, getInventoryStats, adjustStock, deleteProductById } from "../../controllers/inventory/inventoryController.js";
 
 const router = Router();
 
-// POST /api/admini/products
-router.post("/products", VerifyToken, verifyRole("admon_inventario"), createProduct);
+//ruta para los kpis, o sea datos como numero de productos, inventario bajo, etc
+router.get("/stats", VerifyToken, verifyRole("admon_inventario"), getInventoryStats);
 
-// PUT /api/admini/products/:sku/stock
-// Body: { "ajuste": number }
-router.put("/products/:sku/stock", VerifyToken, verifyRole("admon_inventario"), adjustSkuStock);
+//este es para la tabla de productos para el admin
+router.get("/products", VerifyToken, verifyRole("admon_inventario"), getInventoryProducts);
+
+//obtener firma de cloudinary
+router.get("/upload-signature", VerifyToken, verifyRole("admon_inventario"), getCloudinarySignature);
+
+//endpoint para crear productos
+router.post("/products-v2", VerifyToken, verifyRole("admon_inventario"), createProductV2);
+
+//endpoint para ajustar stock
+router.patch("/stock/adjust", VerifyToken, verifyRole("admon_inventario"), adjustStock);
+
+//elimnar producto completo, recibe ID
+router.delete("/products/:id", VerifyToken, verifyRole("admon_inventario"), deleteProductById);
+
 
 // Exportación del router creo que ya les quedó claro (espero que si)
 export default router;

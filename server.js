@@ -17,7 +17,7 @@ import addressRoutes from "./Backend/routes/users/address.routes.js";
 
 // Validar conexión a la base de datos
 mongoose.connection.once("open", () => {
-  console.log("[Mongo] conectado a", mongoose.connection.host, mongoose.connection.name);
+    console.log("[Mongo] conectado a", mongoose.connection.host, mongoose.connection.name);
 });
 
 // Configurar variables de entorno
@@ -26,7 +26,7 @@ dotenv.config();
 // Iniciar el servidor
 const app = express();
 
-async function startServer(){
+async function startServer() {
     await connectDB();
     // Configuración de seguridad, esta sirve para que el servidor pueda recibir peticiones de otros servidores
     // y que pueda recibir cookies, Railway requiere esta configuración
@@ -39,27 +39,27 @@ async function startServer(){
 
     const allowList = [
         process.env.APP_URL_LOCAL,
-        process.env.APP_URL_PRODUCTION        
+        process.env.APP_URL_PRODUCTION
     ];
 
     app.use(cors({
         // Origin es la url de la app que esta haciendo la peticion
         // Callback es una funcion que se ejecuta cuando se hace la peticion
         // Lo que hacen aqui es validar si la url de la app que esta haciendo la peticion esta en la lista de permitidos
-        origin: function (origin, callback){
-            if (!origin){
+        origin: function (origin, callback) {
+            if (!origin) {
                 // Si no hay origin, se permite la peticion y esta es la forma de indicarle a cors que se permite la peticion
-                return callback (null, true)
+                return callback(null, true)
             }
             // Si la url de la app que esta haciendo la peticion esta en la lista de permitidos, se permite la peticion
-            if (allowList.includes(origin)){
+            if (allowList.includes(origin)) {
                 return callback(null, true);
             }
             // Si la url de la app que esta haciendo la peticion no esta en la lista de permitidos, se deniega la peticion
             return callback(new Error("No permitido por CORS"))
         },
         // Metodos que se permiten para la peticion
-        methods: ["GET", "POST", "PUT", "DELETE"],
+        methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
         // Indica que se permiten cookies
         credentials: true,
         // Indica que se permite la peticion OPTIONS 
@@ -75,13 +75,17 @@ async function startServer(){
     app.use("/api/pos", posRoutes);
     app.use("/api/products", productsRoutes);
     app.use("/api/cart", cartRoutes);
+<<<<<<< HEAD
     app.use('/api', addressRoutes);
     
+=======
+
+>>>>>>> main
     // Healt check para Railway o render
     // Healt check es un endpoint que retorna un json con un objeto que tiene la propiedad ok con el valor true
     // y la propiedad ok y true significan que la app esta funcionando correctamente
     app.get("/api/health", (req, res) => {
-        res.json({ok: true});
+        res.json({ ok: true });
     });
 
     // Iniciar ahora si el server

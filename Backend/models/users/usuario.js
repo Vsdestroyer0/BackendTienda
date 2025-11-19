@@ -3,13 +3,27 @@ import mongoose from "mongoose";
 
 // Definición del esquema de usuario
 const usuarioSchema = new mongoose.Schema({
-    nombre: {type: String, required: true},
-    apellido: {type: String, required: true},
-    email: {type: String, required: true, unique: true},
-    password: {type: String, required: true},
-    role: {type: String, enum: ["user", "cajero", "admon_inventario", "admon_roles"], default: "user"},
-    emailVerified: {type: Boolean, default: false},
-    verificationToken: {tokenHashed: String, tokenExpiry: Date}
+    nombre: { type: String, required: true },
+    apellido: { type: String, required: true },
+    email: { type: String, required: true, unique: true },
+    // Se cambia el password a false por los provedores de Google
+    password: { type: String, required: false },
+    role: { type: String, enum: ["user", "cajero", "admon_inventario", "admon_roles"], default: "user" },
+    emailVerified: { type: Boolean, default: false },
+    verificationToken: { tokenHashed: String, tokenExpiry: Date },
+    passwordResetToken: { tokenHashed: String, tokenExpiry: Date },
+    authProvider: { type: String, enum: ["local", "google"], default: "local" },
+    security: {
+        enabled: { type: Boolean, default: false },
+        questions: [
+            {
+                questionId: { type: String, required: true },
+                answerHash: { type: String, required: true },
+                salt: { type: String, required: true },
+                createdAt: { type: Date, default: Date.now }
+            }
+        ]
+    }
 }, 
 {
     // timestamps: true agrega automaticamente dos campos createdAt y updatedAt en la base de datos

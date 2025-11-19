@@ -16,9 +16,9 @@ router.get("/", VerifyToken, verifyRole("user"), getCart);
 router.post("/", VerifyToken, verifyRole("user"), addToCart);
 
 // PUT /api/cart/:sku
-router.put("/:sku", VerifyToken, verifyRole("user"), updateCartItem);
+router.put("/:sku/:size", VerifyToken, verifyRole("user"), updateCartItem);
 
 // DELETE /api/cart/:sku
-router.delete("/:sku", VerifyToken, verifyRole("user"), removeFromCart);
+router.delete("/:sku/:size", VerifyToken, verifyRole("user"), removeFromCart);
 
 export default router;

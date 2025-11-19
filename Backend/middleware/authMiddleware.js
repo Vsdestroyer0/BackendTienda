@@ -14,15 +14,7 @@ export const VerifyToken = async (req, res, next) => {
     // req.cookies.token es el token que se envia en la solicitud
  const token =
     req.cookies?.token ||
-    req.header("Authorization")?.replace("Bearer ", "");
-
-    // Si no se encuentra el token se retorna un error
-    // El 401 es un error de autenticación
-    if (!token) {
-        console.warn("No se encontro token");
-        return res.status(401).json({success: false, message: "No se encontro token"});
-    }
-    
+    req.header("Authorization")?.replace("Bearer ", "");    
     // Intentar verificar el token
     try{
         // Decodificar el token y obtener el usuario
