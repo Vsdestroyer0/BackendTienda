@@ -136,7 +136,7 @@ export const loginUser = async (req, res) => {
     sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
     path: "/",
     // maxAge es la fecha de expiración del token y aqui son 12 horas
-    maxAge: 12 * 60 * 60 * 1000
+    maxAge: 48 * 60 * 60 * 1000
   });
 
   // Ya jaló el login :D

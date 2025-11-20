@@ -33,6 +33,17 @@ export const getCloudinarySignature = (req, res) => {
   }
 };
 
+//funcion auxiliar para generar codigos
+const generateCode = (text, length = 3) => {
+  if (!text) return "XXX";
+  return text
+    .toString()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Quitar acentos
+    .replace(/[^a-zA-Z0-9]/g, "") // Quitar caracteres raros
+    .toUpperCase()
+    .substring(0, length);
+};
+
 //  endpoint para crear productos 
 export const createProductV2 = async (req, res) => {
   try {
@@ -43,6 +54,26 @@ export const createProductV2 = async (req, res) => {
     if (!productData || !productData.name || !productData.brand || !productData.variants) {
       return res.status(400).json({ message: "Datos del producto incompletos." });
     }
+
+    const brandCode = generateCode(productData.brand, 3);
+    const nameCode = generateCode(productData.name, 4); // Ej: BOTA
+    const categoryCode = generateCode(productData.category || "GEN", 3);
+
+    productData.variants = productData.variants.map((variant, index) => {
+      const colorCode = generateCode(variant.colorName, 3);
+
+      // Fórmula: MARCA-CATEGORIA-NOMBRE-COLOR-INDICE
+      // El índice es vital por si tienes dos colores que empiezan igual (Azul vs Azur)
+      // Ej: AVE-CAL-BOTA-MAR-01
+      const autoSku = `${brandCode}-${categoryCode}-${nameCode}-${colorCode}-${(index + 1).toString().padStart(2, '0')}`;
+
+      return {
+        ...variant,
+        sku: autoSku // <-- ¡Aquí inyectamos el SKU!
+      };
+    });
+
+
 
     const newProduct = new Product(productData);
     await newProduct.save();
