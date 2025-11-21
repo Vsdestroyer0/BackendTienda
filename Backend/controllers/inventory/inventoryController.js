@@ -199,7 +199,7 @@ export const getInventoryProducts = async (req, res) => {
   }
 };
 
-
+//añadir o quitar stock (+, -)
 export const adjustStock = async (req, res) => {
   try {
     const { sku, size, adjustment } = req.body; // adjustment  1 o -1
@@ -262,6 +262,7 @@ export const adjustStock = async (req, res) => {
   }
 };
 
+//eliminar producto COMPLETO
 export const deleteProductById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -285,3 +286,39 @@ export const deleteProductById = async (req, res) => {
     res.status(500).json({ message: "Error del servidor al eliminar" });
   }
 };
+
+//eliminar una talla de alguna variante de un producto
+export const deleteSize = async (req, res) => {
+  try {
+    const { sku, size } = req.body; // En DELETE, a veces se envía en body o query. Usaremos body.
+
+    if (!sku || !size) {
+      return res.status(400).json({ message: "SKU y Talla requeridos" });
+    }
+
+    // Usamos el operador $pull para sacar el elemento del arreglo
+    const result = await Product.updateOne(
+      { "variants.sku": sku }, // 1. Encontrar el producto que tiene esta variante
+      {
+        $pull: {
+          "variants.$.sizes": { size: size } // 2. Quitar del arreglo 'sizes' el objeto con ese 'size'
+        }
+      }
+    );
+
+    if (result.matchedCount === 0) {
+      return res.status(404).json({ message: "Producto o variante no encontrada" });
+    }
+
+    if (result.modifiedCount === 0) {
+      return res.status(404).json({ message: "La talla no existía en esa variante" });
+    }
+
+    res.json({ message: "Talla eliminada correctamente" });
+
+  } catch (error) {
+    console.error("Error eliminando talla:", error);
+    res.status(500).json({ message: "Error del servidor" });
+  }
+};
+
