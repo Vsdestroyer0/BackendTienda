@@ -1,8 +1,7 @@
-// importaciones de paquetes
 import bcrypt from "bcrypt";
 import mongoose from "mongoose";
 
-// modelos
+// modelo
 import Usuario from "../../models/users/usuario.js";
 
 const saltRounds = parseInt(process.env.BCRYPT_SALT_ROUNDS || "10", 10);
@@ -69,5 +68,36 @@ export const deleteInternalUser = async (req, res) => {
   } catch (e) {
     console.error(e);
     return res.status(500).json({ success: false, message: "Error eliminando usuario" });
+  }
+};
+
+// GET /api/admin/users obtener empleados
+export const listInternalUsers = async (req, res) => {
+  try {
+    // Filtro: Traer todo lo que NO sea rol "user"
+    // Si quisieras ver TODOS, quitarías este filtro, pero por orden es mejor separar.
+    const query = { role: { $ne: "user" } };
+
+    // Buscamos y seleccionamos solo los campos necesarios para la tabla
+    // Excluimos password explícitamente (aunque .select lo hace implícito si listas campos positivos)
+    const users = await Usuario.find(query)
+      .select("nombre apellido email role createdAt emailVerified")
+      .sort({ createdAt: -1 }); // Los más nuevos primero
+
+    // Mapeamos para limpiar un poco la respuesta si es necesario
+    const data = users.map((u) => ({
+      id: u._id,
+      nombre: u.nombre,
+      apellido: u.apellido,
+      email: u.email,
+      role: u.role, // 'cajero', 'admon_inventario', etc.
+      fecha_alta: u.createdAt,
+      activo: u.emailVerified // Usamos esto como indicador de estado por ahora
+    }));
+
+    return res.status(200).json(data);
+  } catch (e) {
+    console.error("Error listando empleados:", e);
+    return res.status(500).json({ success: false, message: "Error al obtener la lista de personal" });
   }
 };
