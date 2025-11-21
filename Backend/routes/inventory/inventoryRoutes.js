@@ -10,7 +10,8 @@ import {
     getInventoryStats,
     adjustStock,
     deleteProductById,
-    deleteSize
+    deleteSize,
+    updateProduct
 } from "../../controllers/inventory/inventoryController.js";
 
 const router = Router();
@@ -35,6 +36,9 @@ router.delete("/products/:id", VerifyToken, verifyRole("admon_inventario"), dele
 
 //eliminar talla 
 router.delete("/stock/size", VerifyToken, verifyRole("admon_inventario"), deleteSize);
+
+//actualizar producto
+router.put("/products/:id", VerifyToken, verifyRole("admon_inventario"), updateProduct);
 
 // Exportación del router creo que ya les quedó claro (espero que si)
 export default router;

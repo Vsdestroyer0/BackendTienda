@@ -322,3 +322,44 @@ export const deleteSize = async (req, res) => {
   }
 };
 
+//PUT actualizar producto completo
+export const updateProduct = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updates = req.body;
+
+    // 1. Validar ID
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "ID de producto inválido" });
+    }
+
+    // 2. Validar que lleguen datos (opcional, pero recomendado)
+    if (!updates || Object.keys(updates).length === 0) {
+      return res.status(400).json({ message: "No se enviaron datos para actualizar" });
+    }
+
+    // 3. Actualizar en MongoDB
+    // { new: true } hace que Mongo te devuelva el documento YA actualizado, no el viejo.
+    const updatedProduct = await Product.findByIdAndUpdate(id, updates, {
+      new: true,
+      runValidators: true // Ejecuta las validaciones de tu esquema (ej: required)
+    });
+
+    if (!updatedProduct) {
+      return res.status(404).json({ message: "Producto no encontrado" });
+    }
+
+    res.json({
+      message: "Producto actualizado correctamente",
+      product: updatedProduct
+    });
+
+  } catch (error) {
+    console.error("Error actualizando producto:", error);
+    // Manejo de error de duplicados (ej: si intentan cambiar el SKU a uno que ya existe en otro producto)
+    if (error.code === 11000) {
+      return res.status(409).json({ message: "Conflicto: SKU o dato duplicado" });
+    }
+    res.status(500).json({ message: "Error del servidor al actualizar" });
+  }
+};
