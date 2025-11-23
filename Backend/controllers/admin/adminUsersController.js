@@ -72,17 +72,17 @@ export const deleteInternalUser = async (req, res) => {
 };
 
 // GET /api/admin/users obtener empleados
+const INTERNAL_ROLES = ["cajero", "admon_inventario", "admon_roles"];
+
 export const listInternalUsers = async (req, res) => {
   try {
-    // Filtro: Traer todo lo que NO sea rol "user"
-    // Si quisieras ver TODOS, quitarías este filtro, pero por orden es mejor separar.
-    const query = { role: { $ne: "user" } };
+    // CAMBIO CLAVE: En lugar de { role: { $ne: "user" } }, usamos $in para ser explícitos.
+    // Esto es más seguro y rápido (si el campo role está indexado).
+    const query = { role: { $in: INTERNAL_ROLES } };
 
-    // Buscamos y seleccionamos solo los campos necesarios para la tabla
-    // Excluimos password explícitamente (aunque .select lo hace implícito si listas campos positivos)
     const users = await Usuario.find(query)
       .select("nombre apellido email role createdAt emailVerified")
-      .sort({ createdAt: -1 }); // Los más nuevos primero
+      .sort({ createdAt: -1 });
 
     // Mapeamos para limpiar un poco la respuesta si es necesario
     const data = users.map((u) => ({
