@@ -101,3 +101,62 @@ export const listInternalUsers = async (req, res) => {
     return res.status(500).json({ success: false, message: "Error al obtener la lista de personal" });
   }
 };
+
+// PUT /api/admin/users/:id
+export const updateInternalUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { nombre, apellido, email, role, password } = req.body || {};
+
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ success: false, message: "ID inválido" });
+    }
+
+    // 1. Buscar usuario original
+    const user = await Usuario.findById(id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "Usuario no encontrado" });
+    }
+
+    // 2. Validar duplicidad de email (solo si cambió)
+    if (email && email !== user.email) {
+      const exists = await Usuario.findOne({ email });
+      if (exists) {
+        return res.status(409).json({ success: false, message: "El email ya está en uso por otro usuario" });
+      }
+      user.email = email;
+    }
+
+    // 3. Actualizar campos básicos
+    if (nombre) user.nombre = nombre;
+    if (apellido) user.apellido = apellido;
+
+    // Validar rol antes de asignar
+    if (role) {
+      const normalizedRole = role.trim().toLowerCase();
+      const ALLOWED_INTERNAL_ROLES = ["cajero", "admon_inventario", "admon_roles"];
+      if (ALLOWED_INTERNAL_ROLES.includes(normalizedRole)) {
+        user.role = normalizedRole;
+      } else {
+        return res.status(400).json({ success: false, message: "Rol inválido" });
+      }
+    }
+
+    // 4. Actualizar Password (SOLO si se envió algo)
+    if (password && password.trim().length > 0) {
+      if (password.length < 6) {
+        return res.status(400).json({ success: false, message: "La contraseña debe tener al menos 6 caracteres" });
+      }
+      const saltRounds = parseInt(process.env.BCRYPT_SALT_ROUNDS || "10", 10);
+      user.password = await bcrypt.hash(password, saltRounds);
+    }
+
+    await user.save();
+
+    return res.status(200).json({ success: true, message: "Usuario actualizado correctamente" });
+
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ success: false, message: "Error actualizando usuario" });
+  }
+};
