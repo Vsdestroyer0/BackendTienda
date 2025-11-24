@@ -13,18 +13,7 @@ const usuarioSchema = new mongoose.Schema({
     verificationToken: { tokenHashed: String, tokenExpiry: Date },
     favorites: { type: [String], default: [] },
     passwordResetToken: { tokenHashed: String, tokenExpiry: Date },
-    authProvider: { type: String, enum: ["local", "google"], default: "local" },
-    security: {
-        enabled: { type: Boolean, default: false },
-        questions: [
-            {
-                questionId: { type: String, required: true },
-                answerHash: { type: String, required: true },
-                salt: { type: String, required: true },
-                createdAt: { type: Date, default: Date.now }
-            }
-        ]
-    }
+    authProvider: { type: String, enum: ["local", "google"], default: "local" }
 }, 
 {
     // timestamps: true agrega automaticamente dos campos createdAt y updatedAt en la base de datos
