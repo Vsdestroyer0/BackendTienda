@@ -167,6 +167,7 @@ export const getSession = async (req, res) => {
       email: user.email,
       role: user.role,
       nombre: user.nombre,
+      apellido: user.apellido,
       emailVerified: !!user.emailVerified,
       security: { enabled: !!(user.security && user.security.enabled) },
       historial_compras: [],
