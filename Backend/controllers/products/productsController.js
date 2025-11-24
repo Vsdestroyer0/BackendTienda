@@ -5,22 +5,13 @@ import Product from '../../models/product/Product.js'; // <-- ¡IMPORTAR EL MODE
 // GET /api/products
 export const listProducts = async (req, res) => {
   try {
-
-    const { category } = req.query;
-
-    const filter = {};
-    if (category) {
-
-      filter.category = category;
-      }
     // 1. Usar el modelo Product
-    const products = await Product.find(filter, {
+    const products = await Product.find({}, {
       // 2. Proyectar los datos que el ProductCard necesita
       name: 1,
       brand: 1,
       price: 1,
       salePrice: 1,
-      category: 1,
       variants: { $slice: 1 } // Tomar solo la primera variante
     });
 
@@ -32,20 +23,12 @@ export const listProducts = async (req, res) => {
         name: p.name,
         price: p.salePrice || p.price, // Enviar el precio de oferta si existe
         brand: p.brand,
-        category: p.category,
         // Enviar la primera imagen de la primera variante
         imageUrl: firstVariant?.images?.[0] || '/placeholder-shoe.jpg'
       };
     });
 
-    return res.status(200).json({ 
-    products: data,
-    pagination: {
-      currentPage: 1,
-        totalPages: 1,
-        totalProducts: data.length,
-        limit: data.length
-    }});
+    return res.status(200).json(data);
 
   } catch (e) {
     console.error(e);
