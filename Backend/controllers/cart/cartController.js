@@ -8,62 +8,72 @@ const CARTS_COL = () => mongoose.connection.collection("carts");
 export const getCart = async (req, res) => {
   try {
     const userId = req.userId;
-    const cart = await CARTS_COL().findOne({ user_id: userId }, { projection: { _id: 0, items: 1 } });
-    const items = cart?.items || [];
+    const cart = await CARTS_COL().findOne(
+      { user_id: userId },
+      { projection: { _id: 0, items: 1 } }
+    );
 
-    // Enriquecer con nombre_producto, talla, precio
+    const items = cart?.items || [];
     const enriched = [];
+
     for (const it of items) {
       const sku = it?.sku;
       const cantidad = it?.cantidad;
+
       if (!sku || typeof cantidad !== "number") continue;
 
-      const prod = await PRODUCTS_COL().findOne(
-        { skus: { $elemMatch: { sku } } },
-        { projection: { nombre: 1, skus: { $elemMatch: { sku } } } }
+      // Buscar la variant que contiene ese SKU
+      const prod = await Product.findOne(
+        { "variants.sku": sku },
+        {
+          nombre: 1,
+          variants: { $elemMatch: { sku } }
+        }
       );
-      const matched = prod?.skus?.[0];
-      if (!matched) continue;
+
+      const variant = prod?.variants?.[0];
+      if (!variant) continue;
+
+      // Toma la primera talla
+      const sizeObj = variant.sizes?.[0];
 
       enriched.push({
         sku,
         cantidad,
         nombre_producto: prod?.nombre || "",
-        talla: typeof matched.talla === "number" ? matched.talla : Number(matched.talla),
-        precio: Number(matched.precio)
+        talla: "",
+        precio: Number(sizeObj?.precio) || 0
       });
     }
 
     return res.status(200).json({ items: enriched });
+
   } catch (e) {
     console.error(e);
     return res.status(500).json({ success: false, message: "Error obteniendo carrito" });
   }
 };
 
+
 // POST /api/cart  { sku, cantidad }
 export const addToCart = async (req, res) => {
   try {
     const userId = req.userId;
-    const { sku, size, cantidad } = req.body || {}; // <-- 'size' es nuevo
+    const { sku, cantidad } = req.body || {};
 
-    if (!sku || !size || typeof cantidad !== "number" || cantidad <= 0) {
-      return res.status(400).json({ success: false, message: "Parámetros inválidos (sku, size, cantidad)" });
+    if (!sku || typeof cantidad !== "number" || cantidad <= 0) {
+      return res.status(400).json({ success: false, message: "Parámetros inválidos (sku, cantidad)" });
     }
 
-    // Validar SKU y Talla contra el modelo Product
+    // Validar solo SKU, sin talla
     const prod = await Product.findOne(
-      {
-        "variants.sku": sku,
-        "variants.sizes.size": size
-      },
+      { "variants.sku": sku },
       { projection: { _id: 1 } }
     );
 
     if (!prod) {
-      return res.status(404).json({ success: false, message: "Producto/Talla no encontrado" });
+      return res.status(404).json({ success: false, message: "Producto no encontrado" });
     }
-
     const now = new Date();
     const cartsCol = CARTS_COL();
     const cart = await cartsCol.findOne({ user_id: userId });
