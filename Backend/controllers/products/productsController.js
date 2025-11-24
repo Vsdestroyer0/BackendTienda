@@ -5,30 +5,55 @@ import Product from '../../models/product/Product.js'; // <-- ¡IMPORTAR EL MODE
 // GET /api/products
 export const listProducts = async (req, res) => {
   try {
-    // 1. Usar el modelo Product
-    const products = await Product.find({}, {
-      // 2. Proyectar los datos que el ProductCard necesita
+    // 1. Leer parámetros de paginación 
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const category = req.query.category; // Por si acaso se usa el filtro
+
+    // 2. Filtro opcional
+    const filter = {};
+    if (category) {
+      filter.category = { $regex: category, $options: "i" }; // Búsqueda flexible
+    }
+
+    // 3. Obtener totales para la metadata de paginación
+    const totalProducts = await Product.countDocuments(filter);
+    const totalPages = Math.ceil(totalProducts / limit);
+
+    // 4. Consulta paginada
+    const products = await Product.find(filter, {
       name: 1,
       brand: 1,
       price: 1,
       salePrice: 1,
-      variants: { $slice: 1 } // Tomar solo la primera variante
-    });
+      variants: { $slice: 1 } // Solo la primera variante para la card
+    })
+      .skip((page - 1) * limit)
+      .limit(limit);
 
-    // 3. Transformar los datos para el frontend (IProductForCard)
-    const data = products.map(p => {
+    // 5. Mapeo de datos (igual que antes)
+    const formattedProducts = products.map(p => {
       const firstVariant = p.variants?.[0];
       return {
         id: p._id.toString(),
         name: p.name,
-        price: p.salePrice || p.price, // Enviar el precio de oferta si existe
+        price: p.salePrice || p.price,
         brand: p.brand,
-        // Enviar la primera imagen de la primera variante
         imageUrl: firstVariant?.images?.[0] || '/placeholder-shoe.jpg'
       };
     });
 
-    return res.status(200).json(data);
+    // 6. RESPUESTA ESTRUCTURADA (La corrección clave)
+    // Esto es lo que 'useProducts' está intentando leer desesperadamente
+    return res.status(200).json({
+      products: formattedProducts, // El array de datos
+      pagination: {                // La metadata
+        totalProducts,
+        totalPages,
+        currentPage: page,
+        limit
+      }
+    });
 
   } catch (e) {
     console.error(e);
@@ -36,16 +61,6 @@ export const listProducts = async (req, res) => {
   }
 };
 
-// GET /api/products/:productId
-
-
-// ... (Aquí podrías tener tu función 'getProducts' que ya existía) ...
-
-/**
- * @desc    Obtiene un solo producto por su ID
- * @route   GET /api/products/:productId
- * @access  Público
- */
 export const getProductById = async (req, res) => {
   try {
     // 1. Obtener el ID de los parámetros de la URL
