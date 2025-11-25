@@ -1,24 +1,15 @@
-// Importaciones de paquetes
 import { Router } from "express";
-
-// Middlewares
 import { VerifyToken, verifyRole } from "../../middleware/authMiddleware.js";
-
-// Controladores
 import { getCart, addToCart, updateCartItem, removeFromCart } from "../../controllers/cart/cartController.js";
 
 const router = Router();
 
-// GET /api/cart
-router.get("/", VerifyToken, verifyRole("user"), getCart);
+// Todas protegidas para usuario
+router.use(VerifyToken, verifyRole("user"));
 
-// POST /api/cart
-router.post("/", VerifyToken, verifyRole("user"), addToCart);
-
-// PUT /api/cart/:sku
-router.put("/:sku/:size", VerifyToken, verifyRole("user"), updateCartItem);
-
-// DELETE /api/cart/:sku
-router.delete("/:sku/:size", VerifyToken, verifyRole("user"), removeFromCart);
+router.get("/", getCart);
+router.post("/", addToCart);
+router.put("/:sku/:size", updateCartItem);    // Recibe SKU y Talla en URL
+router.delete("/:sku/:size", removeFromCart); // Recibe SKU y Talla en URL
 
 export default router;
