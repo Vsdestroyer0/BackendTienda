@@ -1,5 +1,6 @@
 // importaciones de paquetes
 import mongoose from "mongoose";
+import Product from "../../models/product/Product.js";
 
 // Función para validar y procesar una compra
 
@@ -14,14 +15,19 @@ export const checkoutCompra = async (req, res) => {
       return res.status(400).json({ success: false, message: "Datos inválidos" });
     }
 
+    const allowedPaymentMethods = ["Efectivo", "Tarjeta"];
+    if (!allowedPaymentMethods.includes(metodo_pago)) {
+      return res.status(400).json({ success: false, message: "Método de pago inválido" });
+    }
+
     // Iniciar una sesión de MongoDB
     const session = await mongoose.startSession();
     // orderId es usado en la respuesta para identificar la orden
     let orderId = null;
     // invoiceId es usado en la respuesta para identificar la factura
     let invoiceId = null;
-    // total es el total de la compra
-    let total = 0;
+    // subtotal y total de la compra
+    let subtotal = 0;
     // lineItems es un array de los items de la compra
     const lineItems = [];
 
@@ -80,8 +86,7 @@ export const checkoutCompra = async (req, res) => {
           if (updateRes.modifiedCount === 0) {
             throw new Error(`INSUFFICIENT:${sku}/${size}`);
           }
-
-          total += (precioUnit * cantidad);
+          subtotal += (precioUnit * cantidad);
           lineItems.push({ sku, size, cantidad, precio_unitario: precioUnit, /*...*/ });
         }
 
@@ -89,11 +94,16 @@ export const checkoutCompra = async (req, res) => {
         const invoicesCol = mongoose.connection.collection("invoices");
         const now = new Date();
 
+        iva = Math.round(subtotal * 0.16 * 100) / 100;
+        total = subtotal + iva;
+
         const orderDoc = {
           user_id: req.userId || null,
           items: lineItems,
           metodo_pago,
           direccion_envio,
+          subtotal,
+          iva,
           total,
           status: "pagado",
           createdAt: now,
@@ -108,6 +118,8 @@ export const checkoutCompra = async (req, res) => {
 
         const invoiceDoc = {
           order_id: orderRes.insertedId,
+          subtotal,
+          iva,
           total_pagado: total,
           metodo_pago,
           issuedAt: now,
@@ -119,7 +131,15 @@ export const checkoutCompra = async (req, res) => {
       session.endSession();
     }
 
-    return res.status(201).json({ order_id: orderId, total_pagado: total, invoice_id: invoiceId });
+    const ivaResponse = Math.round(subtotal * 0.16 * 100) / 100;
+    const totalResponse = subtotal + ivaResponse;
+    return res.status(201).json({
+      order_id: orderId,
+      subtotal,
+      iva: ivaResponse,
+      total_pagado: totalResponse,
+      invoice_id: invoiceId,
+    });
   } catch (e) {
     if (typeof e.message === "string" && e.message.startsWith("INSUFFICIENT:")) {
       const sku = e.message.split(":")[1];
@@ -134,6 +154,172 @@ export const checkoutCompra = async (req, res) => {
     }
     console.error(e);
     return res.status(500).json({ error: "Error procesando la compra" });
+  }
+};
+
+// Checkout específico para POS (cajero en tienda)
+// No maneja tallas explícitas ni modifica stock por talla, solo registra la venta con desglose de IVA.
+export const checkoutPosVenta = async (req, res) => {
+  try {
+    const { items, metodo_pago, origen_venta } = req.body || {};
+
+    if (!Array.isArray(items) || items.length === 0 || !metodo_pago) {
+      return res.status(400).json({ success: false, message: "Datos inválidos" });
+    }
+
+    const allowedPaymentMethods = ["Efectivo", "Tarjeta"];
+    if (!allowedPaymentMethods.includes(metodo_pago)) {
+      return res.status(400).json({ success: false, message: "Método de pago inválido" });
+    }
+
+    const session = await mongoose.startSession();
+    let orderId = null;
+    let invoiceId = null;
+    let ticketId = null;
+    let subtotal = 0;
+    let iva = 0;
+    let total = 0;
+    const lineItems = [];
+
+    try {
+      await session.withTransaction(async () => {
+        for (const it of items) {
+          const { sku, size, cantidad } = it || {};
+          if (!sku || !size || typeof cantidad !== "number" || cantidad <= 0) {
+            throw new Error("BAD_ITEM");
+          }
+
+          const product = await Product.findOne(
+            { "variants.sku": sku },
+            null,
+            { session }
+          );
+
+          if (!product) {
+            throw new Error(`SKU_NOT_FOUND:${sku}`);
+          }
+
+          const variant = product.variants.find((v) => v.sku === sku);
+          const sizeInfo = variant?.sizes.find((s) => s.size === size);
+          if (!sizeInfo) {
+            throw new Error(`SIZE_NOT_FOUND:${sku}/${size}`);
+          }
+
+          const precioUnit = Number(product.salePrice || product.price);
+
+          const updateRes = await Product.updateOne(
+            {
+              _id: product._id,
+              "variants.sku": sku,
+              "variants.sizes.size": size,
+              "variants.sizes.stock": { $gte: cantidad },
+            },
+            {
+              $inc: { "variants.$[v].sizes.$[s].stock": -cantidad },
+            },
+            {
+              arrayFilters: [
+                { "v.sku": sku },
+                { "s.size": size },
+              ],
+              session,
+            }
+          );
+
+          if (updateRes.modifiedCount === 0) {
+            throw new Error(`INSUFFICIENT:${sku}/${size}`);
+          }
+
+          subtotal += precioUnit * cantidad;
+          lineItems.push({ sku, size, cantidad, precio_unitario: precioUnit });
+        }
+
+        const ordersCol = mongoose.connection.collection("orders");
+        const invoicesCol = mongoose.connection.collection("invoices");
+        const now = new Date();
+
+        const iva = Math.round(subtotal * 0.16 * 100) / 100;
+        const total = subtotal + iva;
+
+        const orderDoc = {
+          user_id: null,
+          items: lineItems,
+          metodo_pago,
+          direccion_envio: origen_venta || "VENTA_POS",
+          subtotal,
+          iva,
+          total,
+          status: "pagado",
+          createdAt: now,
+          created_by_role: req.user?.role || "cajero",
+        };
+
+        if (req.user?.role === "cajero") {
+          orderDoc.cajero_id = req.userId;
+          orderDoc.cajero_nombre = req.user?.nombre;
+        }
+
+        const orderRes = await ordersCol.insertOne(orderDoc, { session });
+        orderId = orderRes.insertedId.toString();
+
+        const invoiceDoc = {
+          order_id: orderRes.insertedId,
+          subtotal,
+          iva,
+          total_pagado: total,
+          metodo_pago,
+          issuedAt: now,
+        };
+
+        const invRes = await invoicesCol.insertOne(invoiceDoc, { session });
+        invoiceId = invRes.insertedId.toString();
+
+        const ticketsCol = mongoose.connection.collection("tickets");
+        const ticketDoc = {
+          order_id: orderRes.insertedId,
+          invoice_id: invRes.insertedId,
+          items: lineItems,
+          subtotal,
+          iva,
+          total_pagado: total,
+          metodo_pago,
+          cajero_id: orderDoc.cajero_id ?? null,
+          cajero_nombre: orderDoc.cajero_nombre ?? "",
+          origen_venta: orderDoc.direccion_envio,
+          createdAt: now,
+        };
+
+        const ticketRes = await ticketsCol.insertOne(ticketDoc, { session });
+        ticketId = ticketRes.insertedId.toString();
+      });
+    } finally {
+      session.endSession();
+    }
+    return res.status(201).json({
+      order_id: orderId,
+      subtotal,
+      iva,
+      total_pagado: subtotal + iva,
+      invoice_id: invoiceId,
+      ticket_id: ticketId,
+    });
+  } catch (e) {
+    if (typeof e.message === "string" && e.message.startsWith("SKU_NOT_FOUND:")) {
+      const sku = e.message.split(":")[1];
+      return res.status(404).json({ error: `El SKU [${sku}] no existe.` });
+    }
+    if (typeof e.message === "string" && e.message.startsWith("INSUFFICIENT:")) {
+      const sku = e.message.split(":")[1];
+      return res.status(409).json({ error: `El SKU [${sku}] no tiene stock suficiente para la talla seleccionada.` });
+    }
+    if (e.message === "BAD_ITEM") {
+      return res.status(400).json({ error: "Items inválidos" });
+    }
+    console.error("[checkoutPosVenta] Error inesperado:", e);
+    return res.status(500).json({
+      error: "Error procesando la venta POS",
+      details: typeof e.message === "string" ? e.message : String(e),
+    });
   }
 };
 
