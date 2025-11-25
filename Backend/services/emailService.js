@@ -6,7 +6,7 @@ sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 export const sendPasswordResetEmail = async (to, resetLink) => {
   const msg = {
     to,
-    from: process.env.EMAIL_FROM, // Ej: 'tu-email@tudominio.com'
+    from: process.env.FROM_EMAIL, // Ej: 'tu-email@tudominio.com'
     subject: 'Restablece tu contraseña',
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">

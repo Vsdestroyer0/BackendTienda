@@ -262,9 +262,13 @@ export const requestPasswordReset = async (req, res) => {
     await user.save();
 
     // Enviar correo
-    const resetLink = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password?token=${rawToken}&email=${encodeURIComponent(email)}`;,
-    
-    await sendPasswordResetEmail(email, resetLink);
+    const resetLink = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password?token=${rawToken}&email=${encodeURIComponent(email)}`;
+    try {
+      await sendPasswordResetEmail(email, resetLink);
+    } catch (mailErr) {
+      // No bloquear el flujo por fallo de correo; solo logueamos
+      console.error("No se pudo enviar correo de recuperación:", mailErr);
+    }
 
     return res.json({ message: "Si el correo existe, se ha enviado un enlace de recuperación" });
   } catch (error) {
