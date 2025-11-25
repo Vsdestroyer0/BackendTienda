@@ -317,3 +317,36 @@ export const resetPasswordWithToken = async (req, res) => {
     return res.status(500).json({ error: "No se pudo actualizar la contraseña" });
   }
 };
+
+export const changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: "Se requieren la contraseña actual y la nueva contraseña" });
+    }
+    
+    if (newPassword.length < 8) {
+      return res.status(400).json({ error: "La nueva contraseña debe tener al menos 8 caracteres" });
+    }
+    
+    const user = await Usuario.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ error: "Usuario no encontrado" });
+    }
+    
+    const validPassword = await bcrypt.compare(currentPassword, user.password);
+    if (!validPassword) {
+      return res.status(401).json({ error: "La contraseña actual es incorrecta" });
+    }
+    
+    const hash = await bcrypt.hash(newPassword, saltRounds);
+    user.password = hash;
+    await user.save();
+    
+    return res.json({ message: "Contraseña actualizada correctamente" });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: "No se pudo actualizar la contraseña" });
+  }
+};
