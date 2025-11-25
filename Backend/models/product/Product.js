@@ -23,6 +23,13 @@ const productSchema = new mongoose.Schema({
     salePrice: { type: Number }, // Este es opcional, no 'required'
     description: { type: String, required: true },
 
+    // Público objetivo: H = hombre, M = mujer (opcional para no romper productos antiguos)
+    targetGender: {
+        type: String,
+        enum: ['H', 'M', 'N'],
+        required: false,
+    },
+
     // ESTA ES LA LÍNEA CRÍTICA:
     variants: [variantSchema], // <-- El arreglo que espera el frontend
 

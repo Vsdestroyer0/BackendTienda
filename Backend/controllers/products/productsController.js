@@ -9,11 +9,16 @@ export const listProducts = async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const category = req.query.category; // Por si acaso se usa el filtro
+    const targetGender = req.query.targetGender; // H = hombres, M = mujeres, N = niños
 
     // 2. Filtro opcional
     const filter = {};
     if (category) {
       filter.category = { $regex: category, $options: "i" }; // Búsqueda flexible
+    }
+
+    if (targetGender) {
+      filter.targetGender = targetGender; // Coincidencia exacta por género objetivo
     }
 
     // 3. Obtener totales para la metadata de paginación
