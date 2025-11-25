@@ -5,6 +5,7 @@ import { Router } from "express";
 import { registrar, loginUser, getSession, logoutUser, verifyEmail, resendVerification, setupSecurityQuestions, verifySecurityAnswers, getSecurityCatalog, getSecurityQuestions, resetPasswordWithToken } from "../../controllers/users/authController.js";
 import { VerifyToken } from "../../middleware/authMiddleware.js";
 import { googleAuth } from '../../controllers/users/googleAuthController.js';
+import { updateMe } from "../../controllers/users/authController.js";
 
 
 // Creación del router
@@ -55,6 +56,9 @@ router.get("/security/questions", getSecurityQuestions);
 // Resetear contraseña con token emitido tras validar preguntas de seguridad
 // body: { email, token, newPassword }
 router.post("/security/reset-password", resetPasswordWithToken);
+
+//Actualizar información personal
+router.put("/me", VerifyToken, updateMe);
 
 // Autenticación con Google
 // body: { idToken }

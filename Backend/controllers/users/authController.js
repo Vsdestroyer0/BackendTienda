@@ -228,6 +228,44 @@ export const verifyEmail = async (req, res) => {
   }
 };
 
+export const updateMe = async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    
+    // 1. OBTENER SOLO NOMBRE Y APELLIDO
+    const { nombre, apellido } = req.body; 
+
+    if (!userId) return res.status(401).json({ error: "No autenticado" });
+    
+    // 2. VALIDAR SOLO NOMBRE Y APELLIDO
+    if (!nombre || !apellido) return res.status(400).json({ error: "Nombre y apellido son campos requeridos" });
+    
+    // *** SE ELIMINA toda la lógica de validación y unicidad de email ***
+    
+    const user = await Usuario.findById(userId);
+    if (!user) return res.status(404).json({ error: "Usuario no encontrado" });
+    
+    // 3. GUARDAR SOLO NOMBRE Y APELLIDO
+    user.nombre = nombre;
+    user.apellido = apellido; 
+    // user.email queda intacto
+    
+    await user.save();
+    
+    // 4. RESPONDER SIN EMAIL NI EMAILVERIFIED
+    return res.json({
+      id: user._id.toString(),
+      nombre: user.nombre,
+      apellido: user.apellido,
+      role: user.role,
+      // Los campos de email se excluyen de la respuesta
+    });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: "No se pudo actualizar el usuario" });
+  }
+};
+
 // Reenviar verificación
 export const resendVerification = async (req, res) => {
   try {
