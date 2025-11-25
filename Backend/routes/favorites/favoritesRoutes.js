@@ -9,6 +9,6 @@ router.use(VerifyToken, verifyRole("user"));
 
 router.get("/", getFavorites);
 router.post("/", addFavorite);
-router.delete("/:sku", removeFavorite);
+router.delete("/:productId", removeFavorite);
 
 export default router;
