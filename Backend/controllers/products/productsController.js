@@ -12,6 +12,9 @@ export const listProducts = async (req, res) => {
     const limit = parseInt(req.query.limit) || 10;
     const category = req.query.category; // Por si acaso se usa el filtro
     const targetGender = req.query.targetGender; // H = hombres, M = mujeres, N = niños
+    const brand = req.query.brand; // filtro exacto por marca (slug o nombre)
+    const minPrice = req.query.minPrice ? Number(req.query.minPrice) : null;
+    const maxPrice = req.query.maxPrice ? Number(req.query.maxPrice) : null;
 
     // 2. Filtro opcional
     const filter = {};
@@ -21,6 +24,16 @@ export const listProducts = async (req, res) => {
 
     if (targetGender) {
       filter.targetGender = targetGender; // Coincidencia exacta por género objetivo
+    }
+
+    if (brand) {
+      filter.brand = brand; // Coincidencia exacta por marca
+    }
+
+    if (minPrice !== null || maxPrice !== null) {
+      filter.price = {};
+      if (minPrice !== null) filter.price.$gte = minPrice;
+      if (maxPrice !== null) filter.price.$lte = maxPrice;
     }
 
     // 3. Obtener totales para la metadata de paginación
