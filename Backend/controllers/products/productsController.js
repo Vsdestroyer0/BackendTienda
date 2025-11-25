@@ -1,6 +1,8 @@
 // importaciones de paquetes
 import mongoose from "mongoose";
 import Product from '../../models/product/Product.js'; // <-- ¡IMPORTAR EL MODELO!
+import Brand from '../../models/product/Brand.js';
+import Category from '../../models/product/Category.js';
 
 // GET /api/products
 export const listProducts = async (req, res) => {
@@ -92,5 +94,27 @@ export const getProductById = async (req, res) => {
     // 6. Manejo de errores (ej. error de conexión a la BD)
     console.error('Error al obtener producto por ID:', error);
     return res.status(500).json({ message: 'Error del servidor' });
+  }
+};
+
+// GET /api/products/brands - catálogo de marcas
+export const listBrands = async (req, res) => {
+  try {
+    const brands = await Brand.find({}, { name: 1, slug: 1 }).sort({ name: 1 });
+    return res.status(200).json(brands);
+  } catch (error) {
+    console.error('Error al listar marcas:', error);
+    return res.status(500).json({ message: 'Error al listar marcas' });
+  }
+};
+
+// GET /api/products/categories - catálogo de categorías
+export const listCategories = async (req, res) => {
+  try {
+    const categories = await Category.find({}, { name: 1, slug: 1, type: 1 }).sort({ name: 1 });
+    return res.status(200).json(categories);
+  } catch (error) {
+    console.error('Error al listar categorías:', error);
+    return res.status(500).json({ message: 'Error al listar categorías' });
   }
 };
