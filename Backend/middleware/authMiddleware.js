@@ -11,37 +11,33 @@ const secretKey = process.env.JWT_SECRET;
 // next: siguiente
 export const VerifyToken = (req, res, next) => {
     try {
-        // 1. Obtener el header de autorización
+        // 1. Obtener token desde Authorization o cookie httpOnly
         const authHeader = req.headers.authorization || req.headers.Authorization;
+        let token = null;
 
-        // 2. PRIMER FILTRO: ¿Existe el header?
-        // Si no hay header o no empieza con "Bearer ", es un visitante.
-        if (!authHeader?.startsWith('Bearer ')) {
-            // Retornamos 401 (Unauthorized) limpiamente.
-            // No hacemos console.error aquí porque es un flujo "normal".
+        if (authHeader?.startsWith('Bearer ')) {
+            token = authHeader.split(' ')[1];
+        } else if (req.cookies?.token) {
+            // Soportar el flujo donde el backend pone el JWT en una cookie httpOnly
+            token = req.cookies.token;
+        }
+
+        // 2. Si no hay token en ninguna fuente, devolvemos 401
+        if (!token) {
             return res.status(401).json({
                 message: 'Acceso denegado. No se proporcionó token.'
             });
         }
 
-        // 3. Extraer el token (quitar la palabra "Bearer ")
-        const token = authHeader.split(' ')[1];
+        // 3. Verificar el token
+        const decoded = jwt.verify(token, secretKey);
 
-        // 4. SEGUNDO FILTRO: Verificar el token
-        // jwt.verify lanzará un error si el token está manipulado o expirado,
-        // por eso lo envolvemos en este bloque try/catch.
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-        // 5. Inyectar usuario en la request y continuar
+        // 4. Inyectar usuario en la request y continuar
         req.user = decoded;
         next();
 
     } catch (error) {
-        // Aquí caen errores como: Token expirado, Token inválido, Firma falsa.
-
-        // Opcional: Solo loguear si es un error raro, no si es expiración normal.
-        // console.log("Error de auth:", error.message); 
-
+        // Token inválido o expirado
         return res.status(403).json({
             message: 'Token inválido o expirado.',
             error: error.message
