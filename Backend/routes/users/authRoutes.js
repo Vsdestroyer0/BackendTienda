@@ -5,6 +5,7 @@ import { Router } from "express";
 import { registrar, loginUser, getSession, logoutUser, verifyEmail, resendVerification, requestPasswordReset, resetPasswordWithToken } from "../../controllers/users/authController.js";
 import { VerifyToken } from "../../middleware/authMiddleware.js";
 import { googleAuth } from '../../controllers/users/googleAuthController.js';
+import { changePassword } from "../../controllers/users/authController.js";
 
 // Creación del router
 const router = Router();
@@ -33,6 +34,9 @@ router.post('/google', googleAuth);
 // Rutas de recuperación de contraseña por email
 router.post('/forgot-password', requestPasswordReset);
 router.post('/reset-password', resetPasswordWithToken);
+
+//Cambio de contraseña
+router.put("/password", VerifyToken, changePassword);
 
 // exportacion del router
 export default router;
