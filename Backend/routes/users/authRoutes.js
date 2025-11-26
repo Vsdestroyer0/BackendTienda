@@ -3,9 +3,9 @@ import { Router } from "express";
 
 // Importaciones de paquetes dentro del proyecto
 import { registrar, loginUser, getSession, logoutUser, verifyEmail, resendVerification, requestPasswordReset, resetPasswordWithToken } from "../../controllers/users/authController.js";
-import { VerifyToken } from "../../middleware/authMiddleware.js";
+import { VerifyToken, } from "../../middleware/authMiddleware.js";
 import { googleAuth } from '../../controllers/users/googleAuthController.js';
-import { changePassword } from "../../controllers/users/authController.js";
+import { changePassword, updateProfile } from "../../controllers/users/authController.js";
 
 // Creación del router
 const router = Router();
@@ -37,6 +37,9 @@ router.post('/reset-password', resetPasswordWithToken);
 
 //Cambio de contraseña
 router.put("/password", VerifyToken, changePassword);
+//Editar Perfil
+// Ruta para actualizar perfil
+router.put("/profile",  VerifyToken, updateProfile);
 
 // exportacion del router
 export default router;

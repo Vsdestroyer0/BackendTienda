@@ -350,3 +350,42 @@ export const changePassword = async (req, res) => {
     return res.status(500).json({ error: "No se pudo actualizar la contraseña" });
   }
 };
+// Actualizar datos del perfil (nombre, apellido)
+export const updateProfile = async (req, res) => {
+  try {
+    const { nombre, apellido } = req.body;
+    
+    // Validación básica
+    if (!nombre && !apellido) {
+      return res.status(400).json({ error: "No hay datos para actualizar" });
+    }
+
+    // Buscamos al usuario por el ID que viene del token (req.user.id)
+    const user = await Usuario.findById(req.user.id);
+    
+    if (!user) {
+      return res.status(404).json({ error: "Usuario no encontrado" });
+    }
+
+    // Actualizamos solo si enviaron el dato
+    if (nombre) user.nombre = nombre;
+    if (apellido) user.apellido = apellido;
+
+    await user.save();
+
+    // Devolvemos el usuario actualizado con la misma estructura que 'getSession'
+    return res.json({
+      id: user._id.toString(),
+      email: user.email,
+      role: user.role,
+      nombre: user.nombre,
+      apellido: user.apellido,
+      emailVerified: !!user.emailVerified,
+      historial_compras: [], // O lo que tengas en tu DB
+    });
+
+  } catch (e) {
+    console.error("Error al actualizar perfil:", e);
+    return res.status(500).json({ error: "Error al actualizar el perfil" });
+  }
+};
