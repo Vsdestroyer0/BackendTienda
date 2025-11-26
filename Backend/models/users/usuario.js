@@ -1,7 +1,20 @@
 // Importaciones de paquetes
 import mongoose from "mongoose";
 
-// Definición del esquema de usuario
+//esquema de direcciones 
+const addressSchema = new mongoose.Schema({
+    calle: { type: String, required: true },
+    numero_exterior: { type: String, required: true },
+    numero_interior: { type: String },
+    colonia: { type: String, required: true },
+    municipio: { type: String, required: true },
+    estado: { type: String, required: true },
+    codigo_postal: { type: String, required: true },
+    telefono: { type: String, required: true },
+    referencias: { type: String }
+}, { _id: true });
+
+// esquema de usuario
 const usuarioSchema = new mongoose.Schema({
     nombre: { type: String, required: true },
     apellido: { type: String, required: true },
@@ -20,8 +33,8 @@ const usuarioSchema = new mongoose.Schema({
     timestamps: true
 });
 
-// Creación del modelo de usuario
+// modelo de usuario
 const Usuario = mongoose.model("Usuario", usuarioSchema);
 
-// Exportación del modelo de usuario
+// exportación del modelo
 export default Usuario;
