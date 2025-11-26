@@ -15,9 +15,18 @@ export const listProducts = async (req, res) => {
     const brand = req.query.brand; // filtro exacto por marca (slug o nombre)
     const minPrice = req.query.minPrice ? Number(req.query.minPrice) : null;
     const maxPrice = req.query.maxPrice ? Number(req.query.maxPrice) : null;
+    const search = req.query.search || req.query.q;
 
     // 2. Filtro opcional
     const filter = {};
+    
+    if (search) {
+      filter.$or = [
+        { name: { $regex: search, $options: "i" } },       // Buscar en nombre
+        { description: { $regex: search, $options: "i" } }  // Buscar en descripción
+      ];
+    }
+
     if (category) {
       filter.category = { $regex: category, $options: "i" }; // Búsqueda flexible
     }
@@ -46,6 +55,7 @@ export const listProducts = async (req, res) => {
       brand: 1,
       price: 1,
       salePrice: 1,
+      description: 1,
       variants: { $slice: 1 } // Solo la primera variante para la card
     })
       .skip((page - 1) * limit)
