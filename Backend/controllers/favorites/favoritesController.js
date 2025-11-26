@@ -4,22 +4,24 @@ import Product from "../../models/product/Product.js"; // Necesario para populat
 // GET /api/favorites
 export const getFavorites = async (req, res) => {
   try {
-    // Buscamos la lista del usuario y "rellenamos" (populate) los datos de los productos
     const favDoc = await Favorite.findOne({ user: req.userId }).populate({
       path: 'products',
-      select: 'name brand price salePrice variants.images variants.sku' // Traemos solo datos esenciales
+      select: 'name brand price salePrice variants.images variants.sku'
     });
 
     if (!favDoc) {
       return res.status(200).json({ favorites: [], favoriteIds: [] });
     }
 
-    // Devolvemos los objetos completos (para la página) y los IDs solos (para los botones)
-    const favoriteIds = favDoc.products.map(p => p._id.toString());
 
-    res.status(200).json({ 
-      favorites: favDoc.products, 
-      favoriteIds: favoriteIds 
+    // Filtramos productos que sean null (borrados de la BD) para evitar crash
+    const validProducts = favDoc.products.filter(p => p !== null);
+
+    const favoriteIds = validProducts.map(p => p._id.toString());
+
+    res.status(200).json({
+      favorites: validProducts,
+      favoriteIds: favoriteIds
     });
 
   } catch (e) {
