@@ -20,11 +20,15 @@ export const listProducts = async (req, res) => {
     // 2. Filtro opcional
     const filter = {};
     
+    console.log('🔍 Search parameter:', search);
+    
     if (search) {
       filter.$or = [
         { name: { $regex: search, $options: "i" } },       // Buscar en nombre
-        { description: { $regex: search, $options: "i" } }  // Buscar en descripción
+        { description: { $regex: search, $options: "i" } }, // Buscar en descripción
+        { brand: { $regex: search, $options: "i" } }        // Buscar en marca
       ];
+      console.log('🎯 Filter applied:', JSON.stringify(filter, null, 2));
     }
 
     if (category) {
