@@ -22,6 +22,7 @@ const usuarioSchema = new mongoose.Schema({
     // Se cambia el password a false por los provedores de Google
     password: { type: String, required: false },
     role: { type: String, enum: ["user", "cajero", "admon_inventario", "admon_roles"], default: "user" },
+    direcciones: [addressSchema],
     emailVerified: { type: Boolean, default: false },
     verificationToken: { tokenHashed: String, tokenExpiry: Date },
     //favorites: { type: [String], default: [] },

@@ -4,7 +4,7 @@ import Product from "../../models/product/Product.js"; // Necesario para populat
 // GET /api/favorites
 export const getFavorites = async (req, res) => {
   try {
-    const favDoc = await Favorite.findOne({ user: req.userId }).populate({
+    const favDoc = await Favorite.findOne({ user: req.user.id }).populate({
       path: 'products',
       select: 'name brand price salePrice variants.images variants.sku'
     });
@@ -42,7 +42,7 @@ export const addFavorite = async (req, res) => {
     // findOneAndUpdate con upsert: true crea el documento si no existe
     // $addToSet agrega el ID al arreglo solo si no existe (evita duplicados)
     await Favorite.findOneAndUpdate(
-      { user: req.userId },
+      { user: req.user.id },
       { $addToSet: { products: productId } },
       { new: true, upsert: true }
     );
@@ -60,7 +60,7 @@ export const removeFavorite = async (req, res) => {
 
   try {
     await Favorite.findOneAndUpdate(
-      { user: req.userId },
+      { user: req.user.id },
       { $pull: { products: productId } } // $pull elimina el ID del arreglo
     );
     res.status(200).json({ message: "Eliminado de favoritos" });

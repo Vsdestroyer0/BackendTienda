@@ -1,13 +1,10 @@
-// importaciones de paquetes
 import mongoose from "mongoose";
 
 // POST /api/pos/cierre-caja
-// Body: { "total_ventas": number, "fecha_cierre": string(ISO), "detalle": ["..."] }
 export const createCashClosure = async (req, res) => {
   try {
     const { total_ventas, fecha_cierre, detalle } = req.body || {};
 
-    // Validaciones
     if (typeof total_ventas !== "number" || !Number.isFinite(total_ventas) || total_ventas < 0) {
       return res.status(400).json({ success: false, message: "'total_ventas' inválido" });
     }
@@ -25,7 +22,8 @@ export const createCashClosure = async (req, res) => {
     const closuresCol = mongoose.connection.collection("cash_closures");
 
     const doc = {
-      cajero_id: req.userId,
+      // CORRECCIÓN: req.user.id
+      cajero_id: req.user.id,
       cajero_nombre: req.user?.nombre || "",
       total_ventas,
       fecha_cierre: fecha,
@@ -43,21 +41,20 @@ export const createCashClosure = async (req, res) => {
 };
 
 // GET /api/pos/my-sales (solo cajero)
-// Query opcional: ?page=1&limit=20
 export const getMyPosSales = async (req, res) => {
   try {
     const page = Math.max(1, Number(req.query.page) || 1);
     const limit = Math.max(1, Math.min(100, Number(req.query.limit) || 20));
     const skip = (page - 1) * limit;
 
-    const cajeroId = req.userId;
+    // CORRECCIÓN: req.user.id
+    const cajeroId = req.user.id;
 
     const ordersCol = mongoose.connection.collection("orders");
 
     const filter = {
       created_by_role: "cajero",
       cajero_id: cajeroId,
-      // Si quisieras solo ventas POS y no web, podrías filtrar también por direccion_envio: "VENTA_POS"
     };
 
     const totalCount = await ordersCol.countDocuments(filter);
@@ -108,11 +105,6 @@ export const getMyPosSales = async (req, res) => {
 };
 
 // POST /api/pos/refunds (solo cajero)
-// Body: {
-//   "invoice_id": "string",
-//   "items": [{ "sku": "string", "size": "string", "cantidad": number }],
-//   "motivo": "string"
-// }
 export const createPosRefund = async (req, res) => {
   try {
     const { invoice_id, items, motivo } = req.body || {};
@@ -160,8 +152,6 @@ export const createPosRefund = async (req, res) => {
 
     let invoice = await invoicesCol.findOne({ _id: _invoiceId });
 
-    // Si no se encuentra la factura directamente, interpretamos que el 'invoice_id'
-    // que llegó desde el frontend podría ser en realidad el folio de ticket (ticket_id).
     if (!invoice) {
       const ticket = await ticketsCol.findOne({ _id: _invoiceId });
       if (ticket && ticket.invoice_id) {
@@ -182,9 +172,6 @@ export const createPosRefund = async (req, res) => {
         .json({ success: false, message: "Orden asociada no encontrada" });
     }
 
-    // Opcional: validar que solo el cajero original pueda hacer el reembolso
-    // if (order.cajero_id && String(order.cajero_id) !== String(req.userId)) { ... }
-
     const session = await mongoose.startSession();
     let totalReembolsado = 0;
     let refundId = null;
@@ -193,7 +180,6 @@ export const createPosRefund = async (req, res) => {
       await session.withTransaction(async () => {
         const lineItems = order.items || [];
 
-        // Si el arreglo items viene vacío, interpretamos "reembolso total" usando los items de la orden
         const effectiveItems = items.length
           ? items
           : lineItems.map((li) => ({
@@ -212,7 +198,6 @@ export const createPosRefund = async (req, res) => {
           const precioUnit = Number(match.precio_unitario) || 0;
           totalReembolsado += precioUnit * reqItem.cantidad;
 
-          // Devolver stock a la talla correspondiente
           await productsCol.updateOne(
             {
               "variants.sku": reqItem.sku,
@@ -234,7 +219,8 @@ export const createPosRefund = async (req, res) => {
         const refundDoc = {
           order_id: order._id,
           invoice_id: invoice._id,
-          cajero_id: req.userId,
+          // CORRECCIÓN: req.user.id
+          cajero_id: req.user.id,
           cajero_nombre: req.user?.nombre || "",
           items: items.length
             ? items

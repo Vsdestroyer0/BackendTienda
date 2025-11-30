@@ -4,7 +4,7 @@ import Usuario from "../../models/users/usuario.js";
 export const getAddresses = async (req, res) => {
   try {
     // req.userId viene del middleware VerifyToken
-    const user = await Usuario.findById(req.userId).select("direcciones");
+    const user = await Usuario.findById(req.user.id).select("direcciones");
     
     if (!user) {
       return res.status(404).json({ success: false, message: "Usuario no encontrado" });
@@ -22,20 +22,31 @@ export const getAddresses = async (req, res) => {
 
 // POST /api/users/addresses
 export const addAddress = async (req, res) => {
+  console.log("addAddress llamado");
   try {
     const newAddress = req.body; // { calle, numero, cp, ... }
 
+    console.log("Intentando guardar dirección...");
+    console.log("Usuario ID (del token):", req.user?.id);
+    console.log("Datos recibidos (body):", newAddress);
+
     // Validación básica (puedes mejorarla con Zod o express-validator)
     if (!newAddress.calle || !newAddress.codigo_postal || !newAddress.estado) {
+      console.log("Faltan campos obligatorios");
       return res.status(400).json({ success: false, message: "Faltan campos obligatorios de la dirección" });
     }
-
     // Usamos $push para agregar al array sin sobrescribir
     const user = await Usuario.findByIdAndUpdate(
-      req.userId,
+      req.user.id,
       { $push: { direcciones: newAddress } },
       { new: true } // Para que devuelva el usuario actualizado
     );
+
+    console.log("Resultado de búsqueda en BD:", user ? "Usuario encontrado" : "Usuario NULL");
+
+    if (!user) {
+        return res.status(404).json({ success: false, message: "Usuario no encontrado al guardar" });
+    }
 
     // Devolvemos la última dirección agregada (que tendrá su _id generado)
     const addedAddress = user.direcciones[user.direcciones.length - 1];

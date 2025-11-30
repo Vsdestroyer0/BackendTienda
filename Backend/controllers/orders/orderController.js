@@ -11,10 +11,8 @@ const SHIPPING_COSTS = {
 // procesa la venta web completa (Carrito -> Orden)
 export const checkoutCompra = async (req, res) => {
   try {
-    // recibimos address_id y shipping_method del frontend
     const { items, metodo_pago, address_id, shipping_method } = req.body || {};
 
-    // validaciones básicas
     if (!Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ success: false, message: "El carrito está vacío" });
     }
@@ -27,8 +25,8 @@ export const checkoutCompra = async (req, res) => {
       return res.status(400).json({ success: false, message: "Método de pago inválido" });
     }
 
-    // validar y obtener la dirección del usuario
-    const user = await Usuario.findById(req.userId);
+    // CORRECCIÓN: req.user.id
+    const user = await Usuario.findById(req.user.id);
     if (!user) {
       return res.status(404).json({ success: false, message: "Usuario no encontrado" });
     }
@@ -119,7 +117,6 @@ export const checkoutCompra = async (req, res) => {
             costoEnvio = subtotal > SHIPPING_COSTS.free_threshold ? 0 : SHIPPING_COSTS.standard;
         }
 
-        // calculo de IVA (16%) sobre (Subtotal + Envío) o solo Subtotal según reglas de negocio
         const baseImponible = subtotal + costoEnvio;
         const iva = Math.round(baseImponible * 0.16 * 100) / 100;
         const total = baseImponible + iva;
@@ -128,7 +125,8 @@ export const checkoutCompra = async (req, res) => {
 
         const ordersCol = mongoose.connection.collection("orders");
         const orderDoc = {
-          user_id: new mongoose.Types.ObjectId(req.userId), 
+          // CORRECCIÓN: req.user.id
+          user_id: new mongoose.Types.ObjectId(req.user.id), 
           items: lineItems,
           metodo_pago,
           
@@ -263,14 +261,15 @@ export const checkoutPosVenta = async (req, res) => {
               user_id: null,
               items: lineItems,
               metodo_pago,
-              direccion_envio: origen_venta || "VENTA_POS", // POS no usa direcciones de usuario
+              direccion_envio: origen_venta || "VENTA_POS",
               subtotal,
               iva,
               total,
               status: "pagado",
               createdAt: now,
               created_by_role: req.user?.role || "cajero",
-              cajero_id: req.userId,
+              // CORRECCIÓN: req.user.id
+              cajero_id: req.user.id,
               cajero_nombre: req.user?.nombre
             };
     
@@ -289,7 +288,6 @@ export const checkoutPosVenta = async (req, res) => {
             const invRes = await invoicesCol.insertOne(invoiceDoc, { session });
             invoiceId = invRes.insertedId.toString();
     
-            // Generar Ticket
             const ticketsCol = mongoose.connection.collection("tickets");
             await ticketsCol.insertOne({
                 order_id: orderRes.insertedId,
@@ -312,8 +310,8 @@ export const checkoutPosVenta = async (req, res) => {
 // Listar órdenes del usuario
 export const listUserOrders = async (req, res) => {
   try {
-    const userId = req.userId;
-    // Validamos que el ID sea ObjectId válido antes de consultar
+    // CORRECCIÓN: req.user.id
+    const userId = req.user.id;
     const _idUser = new mongoose.Types.ObjectId(userId);
 
     const ordersCol = mongoose.connection.collection("orders");
@@ -344,7 +342,9 @@ export const getUserOrderById = async (req, res) => {
       return res.status(400).json({ error: "ID de orden inválido" });
     }
     const _id = new mongoose.Types.ObjectId(orderId);
-    const _userId = new mongoose.Types.ObjectId(req.userId);
+    
+    // CORRECCIÓN: req.user.id
+    const _userId = new mongoose.Types.ObjectId(req.user.id);
 
     const ordersCol = mongoose.connection.collection("orders");
     const order = await ordersCol.findOne({ _id });
@@ -364,7 +364,7 @@ export const getUserOrderById = async (req, res) => {
       total: order.total,
       subtotal: order.subtotal,
       costo_envio: order.costo_envio || 0,
-      direccion_envio: order.direccion_envio, // Ahora devolvemos el objeto dirección
+      direccion_envio: order.direccion_envio, 
       estatus: order.status,
       fecha: order.createdAt
     });
