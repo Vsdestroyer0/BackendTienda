@@ -41,7 +41,7 @@ async function startServer() {
     const allowList = [
         process.env.APP_URL_LOCAL,
         process.env.APP_URL_PRODUCTION,
-        "https://eccomerce-f5.netlify.app/"
+        "https://eccomerce-f5.netlify.app"
     ];
 
     app.use(cors({
