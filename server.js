@@ -41,7 +41,7 @@ async function startServer() {
     const allowList = [
         process.env.APP_URL_LOCAL,
         process.env.APP_URL_PRODUCTION,
-        "https://app.netlify.com/projects/eccomerce-f5/configuration/env#VITE_GOOGLE_CLIENT_ID"
+        "https://eccomerce-f5.netlify.app/"
     ];
 
     app.use(cors({
