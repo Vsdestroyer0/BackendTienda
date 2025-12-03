@@ -326,23 +326,51 @@ export const deleteSize = async (req, res) => {
 export const updateProduct = async (req, res) => {
   try {
     const { id } = req.params;
-    const updates = req.body;
+    let updates = req.body; // Usamos 'let' para poder modificar el objeto
 
     // 1. Validar ID
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ message: "ID de producto inválido" });
     }
 
-    // 2. Validar que lleguen datos (opcional, pero recomendado)
+    // 2. Validar datos
     if (!updates || Object.keys(updates).length === 0) {
       return res.status(400).json({ message: "No se enviaron datos para actualizar" });
     }
 
+    // --- CORRECCIÓN INICIO: Generación de SKUs para nuevas variantes ---
+    if (updates.variants && Array.isArray(updates.variants)) {
+      // Necesitamos datos base del producto para generar el código (Marca, Categoría, Nombre)
+      // Si el frontend no los envió en 'updates', los buscamos en la BD.
+      const currentProduct = await Product.findById(id);
+      if (!currentProduct) return res.status(404).json({ message: "Producto no encontrado" });
+
+      const brandCode = generateCode(updates.brand || currentProduct.brand, 3);
+      const nameCode = generateCode(updates.name || currentProduct.name, 4);
+      const categoryCode = generateCode(updates.category || currentProduct.category || "GEN", 3);
+
+      updates.variants = updates.variants.map((variant, index) => {
+        // Si la variante ya tiene SKU, la dejamos igual (es una existente)
+        if (variant.sku) return variant;
+
+        // Si NO tiene SKU, es nueva: Generamos uno
+        const colorCode = generateCode(variant.colorName || "VAR", 3);
+        // Usamos un sufijo aleatorio para evitar duplicados al editar
+        const uniqueSuffix = Math.random().toString(36).substring(7).toUpperCase();
+        const autoSku = `${brandCode}-${categoryCode}-${nameCode}-${colorCode}-${uniqueSuffix}`;
+
+        return {
+          ...variant,
+          sku: autoSku
+        };
+      });
+    }
+    // --- CORRECCIÓN FIN ---
+
     // 3. Actualizar en MongoDB
-    // { new: true } hace que Mongo te devuelva el documento YA actualizado, no el viejo.
     const updatedProduct = await Product.findByIdAndUpdate(id, updates, {
       new: true,
-      runValidators: true // Ejecuta las validaciones de tu esquema (ej: required)
+      runValidators: true
     });
 
     if (!updatedProduct) {
@@ -356,9 +384,12 @@ export const updateProduct = async (req, res) => {
 
   } catch (error) {
     console.error("Error actualizando producto:", error);
-    // Manejo de error de duplicados (ej: si intentan cambiar el SKU a uno que ya existe en otro producto)
     if (error.code === 11000) {
       return res.status(409).json({ message: "Conflicto: SKU o dato duplicado" });
+    }
+    // Verificamos si es error de validación (ej. falta colorName)
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({ message: error.message });
     }
     res.status(500).json({ message: "Error del servidor al actualizar" });
   }
