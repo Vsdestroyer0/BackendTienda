@@ -13,7 +13,7 @@ import productsRoutes from "./Backend/routes/products/productsRoutes.js";
 import cartRoutes from "./Backend/routes/cart/cartRoutes.js";
 import adminUsersRoutes from "./Backend/routes/admin/adminUsersRoutes.js";
 import posRoutes from "./Backend/routes/pos/posRoutes.js";
-import favoritesRoutes from "./Backend/routes/favorites/favoritesRoutes.js"; 
+import favoritesRoutes from "./Backend/routes/favorites/favoritesRoutes.js";
 import userRoutes from "./Backend/routes/users/userRoutes.js";
 
 // Validar conexión a la base de datos
@@ -40,7 +40,8 @@ async function startServer() {
 
     const allowList = [
         process.env.APP_URL_LOCAL,
-        process.env.APP_URL_PRODUCTION
+        process.env.APP_URL_PRODUCTION,
+        "https://app.netlify.com/projects/eccomerce-f5/configuration/env#VITE_GOOGLE_CLIENT_ID"
     ];
 
     app.use(cors({
